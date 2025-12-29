@@ -3,18 +3,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/store/appStore';
 import { cn } from '@/lib/utils';
-import { Hash, Type, Calendar, TrendingUp, Layers } from 'lucide-react';
+import { Hash, Type, Calendar, TrendingUp, Layers, FileSpreadsheet } from 'lucide-react';
 
 interface DataPreviewProps {
   className?: string;
 }
 
 export const DataPreview = ({ className }: DataPreviewProps) => {
-  const { rawData, schema } = useAppStore();
+  const { rawData, schema, fileName } = useAppStore();
 
   if (rawData.length === 0 || schema.length === 0) return null;
 
-  const previewData = rawData.slice(0, 10);
+  const previewData = rawData.slice(0, 8);
   const measures = schema.filter((s) => s.type === 'measure');
   const dimensions = schema.filter((s) => s.type === 'dimension');
   const dates = schema.filter((s) => s.type === 'date');
@@ -51,32 +51,44 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
       animate={{ opacity: 1, y: 0 }}
       className={cn('space-y-4', className)}
     >
+      {/* File name and schema summary */}
+      <div className="flex flex-wrap items-center gap-3">
+        {fileName && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-card rounded-lg border border-border">
+            <FileSpreadsheet className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">{fileName}</span>
+          </div>
+        )}
+      </div>
+
       {/* Schema Summary */}
       <div className="flex flex-wrap gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-card rounded-lg border border-border">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/20">
           <TrendingUp className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium">{measures.length} Measures</span>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-card rounded-lg border border-border">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/5 rounded-lg border border-accent/20">
           <Layers className="w-4 h-4 text-accent" />
           <span className="text-sm font-medium">{dimensions.length} Dimensions</span>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-card rounded-lg border border-border">
-          <Calendar className="w-4 h-4 text-warning" />
-          <span className="text-sm font-medium">{dates.length} Date Fields</span>
-        </div>
+        {dates.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/5 rounded-lg border border-warning/20">
+            <Calendar className="w-4 h-4 text-warning" />
+            <span className="text-sm font-medium">{dates.length} Date Fields</span>
+          </div>
+        )}
       </div>
 
       {/* Data Table */}
-      <div className="rounded-xl border border-border overflow-hidden bg-card">
+      <div className="rounded-xl border border-border overflow-hidden bg-card/50">
         <div className="overflow-x-auto scrollbar-thin">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent border-border">
+              <TableRow className="hover:bg-transparent border-border bg-muted/30">
                 {schema.map((col) => (
-                  <TableHead key={col.name} className="whitespace-nowrap">
+                  <TableHead key={col.name} className="whitespace-nowrap py-3">
                     <div className="flex items-center gap-2">
-                      <span>{col.name}</span>
+                      <span className="font-semibold">{col.name}</span>
                       <Badge variant="outline" className={cn('text-xs font-normal', getTypeBadgeClass(col.type))}>
                         {getTypeIcon(col.type)}
                         <span className="ml-1">{col.type}</span>
@@ -90,8 +102,16 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
               {previewData.map((row, idx) => (
                 <TableRow key={idx} className="border-border">
                   {schema.map((col) => (
-                    <TableCell key={col.name} className="whitespace-nowrap font-mono text-sm">
-                      {String(row[col.name] ?? '')}
+                    <TableCell 
+                      key={col.name} 
+                      className={cn(
+                        'whitespace-nowrap text-sm py-2',
+                        col.type === 'measure' ? 'font-mono text-primary' : ''
+                      )}
+                    >
+                      {col.type === 'measure' && typeof row[col.name] === 'number'
+                        ? new Intl.NumberFormat('en-US').format(row[col.name] as number)
+                        : String(row[col.name] ?? '')}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -101,7 +121,7 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
         </div>
         <div className="px-4 py-2 bg-muted/30 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            Showing {previewData.length} of {rawData.length} rows
+            Showing {previewData.length} of {rawData.length} rows • {schema.length} columns detected
           </p>
         </div>
       </div>
