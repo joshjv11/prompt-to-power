@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/store/appStore';
 import { HeroSection } from '@/components/HeroSection';
@@ -9,11 +9,12 @@ import { PromptForm } from '@/components/PromptForm';
 import { DashboardPreview } from '@/components/DashboardPreview';
 import { SpecViewer } from '@/components/SpecViewer';
 import { GeneratingLoader } from '@/components/GeneratingLoader';
-import { generateDashboardSpec } from '@/lib/mockAi';
+import { generateDashboardWithAI } from '@/lib/aiService';
 import { demoDatasets } from '@/data/sampleData';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw } from 'lucide-react';
+import { AlertCircle, RotateCcw, Sparkles, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const Index = () => {
   const {
@@ -31,13 +32,16 @@ const Index = () => {
     reset,
   } = useAppStore();
 
+  const [aiSource, setAiSource] = useState<'ai' | 'fallback' | null>(null);
+  const [progressStep, setProgressStep] = useState<string>('');
+
   const handleTryDemo = useCallback(() => {
     const salesDemo = demoDatasets[0];
     setFileData(`${salesDemo.name.toLowerCase().replace(' ', '_')}.csv`, salesDemo.data, salesDemo.schema);
     setPrompt('Show total sales by region with a bar chart, top products by revenue, and monthly sales trends');
     toast({
       title: 'Sample data loaded!',
-      description: 'Click Generate to create your dashboard.',
+      description: 'Click Generate to create your AI-powered dashboard.',
     });
   }, [setFileData, setPrompt]);
 
@@ -46,28 +50,35 @@ const Index = () => {
 
     setIsGenerating(true);
     setError(null);
+    setAiSource(null);
+    setProgressStep('Connecting to AI...');
 
     try {
-      // Simulate AI processing time
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const result = await generateDashboardWithAI(
+        schema,
+        rawData,
+        prompt,
+        (step) => setProgressStep(step)
+      );
 
-      // Generate dashboard spec using smart mock AI
-      const spec = generateDashboardSpec(schema, prompt);
-      
-      setDashboardSpec(spec);
+      setDashboardSpec(result.spec);
+      setAiSource(result.source);
+
       toast({
-        title: 'Dashboard generated!',
-        description: `Created ${spec.visuals.length} visualizations based on your prompt.`,
+        title: result.source === 'ai' ? 'AI Dashboard generated!' : 'Dashboard generated!',
+        description: `Created ${result.spec.visuals.length} visualizations${result.source === 'ai' ? ' using Gemini AI' : ''}.`,
       });
     } catch (err) {
-      setError('Failed to generate dashboard. Please try again.');
+      const message = err instanceof Error ? err.message : 'Failed to generate dashboard';
+      setError(message);
       toast({
         title: 'Generation failed',
-        description: 'Please check your connection and try again.',
+        description: message,
         variant: 'destructive',
       });
     } finally {
       setIsGenerating(false);
+      setProgressStep('');
     }
   }, [rawData, prompt, schema, setIsGenerating, setError, setDashboardSpec]);
 
@@ -127,7 +138,13 @@ const Index = () => {
             </div>
 
             <div className="glass-panel p-6">
-              <h2 className="text-xl font-semibold mb-4">Describe Your Dashboard</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Describe Your Dashboard</h2>
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  AI Powered
+                </Badge>
+              </div>
               <PromptForm onGenerate={generateDashboard} />
             </div>
           </motion.div>
@@ -139,11 +156,25 @@ const Index = () => {
             className="space-y-6"
           >
             <div className="glass-panel p-6 min-h-[400px]">
-              <h2 className="text-xl font-semibold mb-4">Dashboard Preview</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Dashboard Preview</h2>
+                {aiSource && (
+                  <Badge 
+                    variant="outline" 
+                    className={aiSource === 'ai' 
+                      ? 'bg-success/10 text-success border-success/20' 
+                      : 'bg-warning/10 text-warning border-warning/20'
+                    }
+                  >
+                    <Cpu className="w-3 h-3 mr-1" />
+                    {aiSource === 'ai' ? 'Gemini AI' : 'Smart Fallback'}
+                  </Badge>
+                )}
+              </div>
 
               <AnimatePresence mode="wait">
                 {isGenerating ? (
-                  <GeneratingLoader key="loader" />
+                  <GeneratingLoader key="loader" step={progressStep} />
                 ) : hasDashboard ? (
                   <DashboardPreview key="preview" />
                 ) : (
@@ -171,7 +202,7 @@ const Index = () => {
                     <h3 className="text-lg font-medium mb-2">Ready to Generate</h3>
                     <p className="text-muted-foreground text-sm max-w-xs">
                       {hasData 
-                        ? 'Describe your dashboard and click Generate to see your visualizations'
+                        ? 'Describe your dashboard and click Generate to see AI-powered visualizations'
                         : 'Upload data or click "Use Sample Data" to get started'
                       }
                     </p>
@@ -186,7 +217,7 @@ const Index = () => {
 
         {/* Footer */}
         <footer className="mt-16 text-center text-sm text-muted-foreground">
-          <p>Built for Microsoft Hackathon • Powered by AI</p>
+          <p>Built for Microsoft Hackathon • Powered by Gemini AI</p>
         </footer>
       </div>
     </div>
