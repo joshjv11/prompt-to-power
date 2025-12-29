@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppStore, DashboardSpec } from '@/store/appStore';
+import { useAppStore } from '@/store/appStore';
 import { HeroSection } from '@/components/HeroSection';
 import { FileUploader } from '@/components/FileUploader';
 import { DataPreview } from '@/components/DataPreview';
@@ -9,6 +9,7 @@ import { PromptForm } from '@/components/PromptForm';
 import { DashboardPreview } from '@/components/DashboardPreview';
 import { SpecViewer } from '@/components/SpecViewer';
 import { GeneratingLoader } from '@/components/GeneratingLoader';
+import { generateDashboardSpec } from '@/lib/mockAi';
 import { demoDatasets } from '@/data/sampleData';
 import { toast } from '@/hooks/use-toast';
 import { AlertCircle, RotateCcw } from 'lucide-react';
@@ -34,6 +35,10 @@ const Index = () => {
     const salesDemo = demoDatasets[0];
     setFileData(`${salesDemo.name.toLowerCase().replace(' ', '_')}.csv`, salesDemo.data, salesDemo.schema);
     setPrompt('Show total sales by region with a bar chart, top products by revenue, and monthly sales trends');
+    toast({
+      title: 'Sample data loaded!',
+      description: 'Click Generate to create your dashboard.',
+    });
   }, [setFileData, setPrompt]);
 
   const generateDashboard = useCallback(async () => {
@@ -43,23 +48,16 @@ const Index = () => {
     setError(null);
 
     try {
-      // For demo purposes without API key, generate a mock spec
-      // In production, this would call the Claude API
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Simulate AI processing time
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      const measures = schema.filter((s) => s.type === 'measure');
-      const dimensions = schema.filter((s) => s.type === 'dimension');
-
-      // Generate a smart mock spec based on the prompt and schema
-      const mockSpec: DashboardSpec = {
-        title: generateTitle(prompt),
-        visuals: generateVisuals(prompt, measures, dimensions),
-      };
-
-      setDashboardSpec(mockSpec);
+      // Generate dashboard spec using smart mock AI
+      const spec = generateDashboardSpec(schema, prompt);
+      
+      setDashboardSpec(spec);
       toast({
         title: 'Dashboard generated!',
-        description: 'Your AI-powered dashboard is ready.',
+        description: `Created ${spec.visuals.length} visualizations based on your prompt.`,
       });
     } catch (err) {
       setError('Failed to generate dashboard. Please try again.');
@@ -72,95 +70,6 @@ const Index = () => {
       setIsGenerating(false);
     }
   }, [rawData, prompt, schema, setIsGenerating, setError, setDashboardSpec]);
-
-  const generateTitle = (prompt: string): string => {
-    const words = prompt.toLowerCase();
-    if (words.includes('sales')) return 'Sales Performance Dashboard';
-    if (words.includes('employee') || words.includes('hr')) return 'HR Analytics Dashboard';
-    if (words.includes('analytics') || words.includes('traffic')) return 'Web Analytics Dashboard';
-    return 'Business Intelligence Dashboard';
-  };
-
-  const generateVisuals = (
-    prompt: string,
-    measures: typeof schema,
-    dimensions: typeof schema
-  ): DashboardSpec['visuals'] => {
-    const visuals: DashboardSpec['visuals'] = [];
-    const words = prompt.toLowerCase();
-    let id = 1;
-
-    const primaryMeasure = measures[0]?.name || 'Value';
-    const primaryDimension = dimensions[0]?.name || 'Category';
-
-    // Add visuals based on prompt keywords
-    if (words.includes('bar') || words.includes('region') || words.includes('by')) {
-      visuals.push({
-        id: `v${id++}`,
-        type: 'bar',
-        title: `${primaryMeasure} by ${primaryDimension}`,
-        metrics: [`SUM(${primaryMeasure})`],
-        dimensions: [primaryDimension],
-        sort: 'desc',
-      });
-    }
-
-    if (words.includes('trend') || words.includes('time') || words.includes('month') || words.includes('line')) {
-      const dateDim = schema.find((s) => s.type === 'date')?.name || primaryDimension;
-      visuals.push({
-        id: `v${id++}`,
-        type: 'line',
-        title: `${primaryMeasure} Over Time`,
-        metrics: [`SUM(${primaryMeasure})`],
-        dimensions: [dateDim],
-        sort: 'asc',
-      });
-    }
-
-    if (words.includes('top') || words.includes('product') || words.includes('ranking')) {
-      visuals.push({
-        id: `v${id++}`,
-        type: 'table',
-        title: `Top ${primaryDimension} Ranking`,
-        metrics: [`SUM(${primaryMeasure})`],
-        dimensions: [primaryDimension],
-        sort: 'desc',
-      });
-    }
-
-    if (words.includes('pie') || words.includes('distribution') || words.includes('share')) {
-      visuals.push({
-        id: `v${id++}`,
-        type: 'pie',
-        title: `${primaryMeasure} Distribution`,
-        metrics: [`SUM(${primaryMeasure})`],
-        dimensions: [primaryDimension],
-      });
-    }
-
-    // Always add a card for total
-    visuals.push({
-      id: `v${id++}`,
-      type: 'card',
-      title: `Total ${primaryMeasure}`,
-      metrics: [`SUM(${primaryMeasure})`],
-      dimensions: [],
-    });
-
-    // If no specific visuals matched, add default bar chart
-    if (visuals.length === 1) {
-      visuals.unshift({
-        id: `v${id++}`,
-        type: 'bar',
-        title: `${primaryMeasure} by ${primaryDimension}`,
-        metrics: [`SUM(${primaryMeasure})`],
-        dimensions: [primaryDimension],
-        sort: 'desc',
-      });
-    }
-
-    return visuals.slice(0, 6); // Max 6 visuals
-  };
 
   const hasData = rawData.length > 0;
   const hasDashboard = dashboardSpec !== null;
@@ -242,11 +151,11 @@ const Index = () => {
                     key="empty"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center py-20 text-center"
+                    className="flex flex-col items-center justify-center py-16 text-center"
                   >
-                    <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                       <svg
-                        className="w-10 h-10 text-muted-foreground"
+                        className="w-10 h-10 text-primary/60"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -259,8 +168,12 @@ const Index = () => {
                         />
                       </svg>
                     </div>
-                    <p className="text-muted-foreground">
-                      Upload data and describe your dashboard to see a preview
+                    <h3 className="text-lg font-medium mb-2">Ready to Generate</h3>
+                    <p className="text-muted-foreground text-sm max-w-xs">
+                      {hasData 
+                        ? 'Describe your dashboard and click Generate to see your visualizations'
+                        : 'Upload data or click "Use Sample Data" to get started'
+                      }
                     </p>
                   </motion.div>
                 )}

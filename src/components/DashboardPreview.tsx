@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppStore, Visual, DataRow } from '@/store/appStore';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 const COLORS = [
   'hsl(199, 89%, 48%)',
@@ -37,7 +37,7 @@ interface DashboardPreviewProps {
 }
 
 export const DashboardPreview = ({ className }: DashboardPreviewProps) => {
-  const { dashboardSpec, rawData, schema } = useAppStore();
+  const { dashboardSpec, rawData } = useAppStore();
 
   if (!dashboardSpec) return null;
 
@@ -54,7 +54,7 @@ export const DashboardPreview = ({ className }: DashboardPreviewProps) => {
         </span>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {dashboardSpec.visuals.map((visual, idx) => (
           <VisualCard
             key={visual.id}
@@ -74,32 +74,56 @@ interface VisualCardProps {
   index: number;
 }
 
+// Aggregation helper
+function aggregateData(
+  data: DataRow[],
+  dimension: string | null,
+  metricName: string
+): { name: string; value: number }[] {
+  if (!dimension) {
+    // Total aggregation
+    const total = data.reduce((sum, row) => {
+      const val = typeof row[metricName] === 'number' ? row[metricName] : parseFloat(String(row[metricName])) || 0;
+      return sum + val;
+    }, 0);
+    return [{ name: 'Total', value: total }];
+  }
+
+  const grouped: Record<string, number> = {};
+
+  data.forEach((row) => {
+    const key = String(row[dimension] || 'Unknown');
+    const val = typeof row[metricName] === 'number' ? row[metricName] : parseFloat(String(row[metricName])) || 0;
+    grouped[key] = (grouped[key] || 0) + val;
+  });
+
+  return Object.entries(grouped).map(([name, value]) => ({ name, value }));
+}
+
 const VisualCard = ({ visual, data, index }: VisualCardProps) => {
   const chartData = useMemo(() => {
-    if (visual.dimensions.length === 0) return data;
-
-    const dim = visual.dimensions[0];
     const metric = visual.metrics[0]?.replace(/SUM\(|AVG\(|COUNT\(|\)/g, '') || '';
+    const dim = visual.dimensions[0] || null;
 
-    const grouped: Record<string, { [key: string]: number }> = {};
+    const aggregated = aggregateData(data, dim, metric);
 
-    data.forEach((row) => {
-      const key = String(row[dim] || 'Unknown');
-      if (!grouped[key]) {
-        grouped[key] = { [dim]: 0 };
-      }
-      const value = typeof row[metric] === 'number' ? row[metric] : parseFloat(String(row[metric])) || 0;
-      grouped[key][metric] = (grouped[key][metric] || 0) + value;
-    });
+    // Sort if needed
+    if (visual.sort === 'desc') {
+      aggregated.sort((a, b) => b.value - a.value);
+    } else if (visual.sort === 'asc') {
+      aggregated.sort((a, b) => a.value - b.value);
+    }
 
-    return Object.entries(grouped)
-      .map(([key, values]) => ({
-        name: key,
-        value: values[metric] || 0,
-        [metric]: values[metric] || 0,
-      }))
-      .sort((a, b) => (visual.sort === 'asc' ? a.value - b.value : b.value - a.value))
-      .slice(0, 10);
+    // Limit for readability
+    return aggregated.slice(0, 10);
+  }, [visual, data]);
+
+  const totalValue = useMemo(() => {
+    const metric = visual.metrics[0]?.replace(/SUM\(|AVG\(|COUNT\(|\)/g, '') || '';
+    return data.reduce((sum, row) => {
+      const val = typeof row[metric] === 'number' ? row[metric] : parseFloat(String(row[metric])) || 0;
+      return sum + val;
+    }, 0);
   }, [visual, data]);
 
   const renderChart = () => {
@@ -108,17 +132,27 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
     switch (visual.type) {
       case 'bar':
         return (
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                angle={-20}
+                textAnchor="end"
+                height={50}
+              />
+              <YAxis
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                tickFormatter={(v) => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(v)}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                 }}
+                formatter={(value: number) => [new Intl.NumberFormat('en-US').format(value), metric]}
               />
               <Bar dataKey="value" fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -127,24 +161,34 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
 
       case 'line':
         return (
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                angle={-20}
+                textAnchor="end"
+                height={50}
+              />
+              <YAxis
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                tickFormatter={(v) => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(v)}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                 }}
+                formatter={(value: number) => [new Intl.NumberFormat('en-US').format(value), metric]}
               />
               <Line
                 type="monotone"
                 dataKey="value"
                 stroke={COLORS[index % COLORS.length]}
                 strokeWidth={2}
-                dot={{ fill: COLORS[index % COLORS.length] }}
+                dot={{ fill: COLORS[index % COLORS.length], strokeWidth: 0 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -152,17 +196,24 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
 
       case 'area':
         return (
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-              <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+              />
+              <YAxis
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                tickFormatter={(v) => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(v)}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                 }}
+                formatter={(value: number) => [new Intl.NumberFormat('en-US').format(value), metric]}
               />
               <Area
                 type="monotone"
@@ -176,16 +227,18 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
 
       case 'pie':
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
                 data={chartData}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
+                innerRadius={50}
+                outerRadius={75}
+                paddingAngle={3}
                 dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                labelLine={false}
               >
                 {chartData.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -197,50 +250,52 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                 }}
+                formatter={(value: number) => [new Intl.NumberFormat('en-US').format(value), metric]}
               />
-              <Legend />
             </PieChart>
           </ResponsiveContainer>
         );
 
       case 'card':
-        const total = chartData.reduce((sum, item) => sum + (typeof item.value === 'number' ? item.value : 0), 0);
         const formatted = new Intl.NumberFormat('en-US', {
-          notation: 'compact',
-          maximumFractionDigits: 1,
-        }).format(total);
-        const trend = Math.random() > 0.5 ? 'up' : 'down';
+          notation: totalValue > 1000000 ? 'compact' : 'standard',
+          maximumFractionDigits: totalValue > 1000000 ? 1 : 0,
+        }).format(totalValue);
+        
+        // Simulate a trend (in production this would be calculated from historical data)
+        const trendValue = ((Math.random() * 20) + 5).toFixed(1);
+        const isPositive = Math.random() > 0.3;
 
         return (
-          <div className="flex flex-col items-center justify-center h-[200px] text-center">
-            <p className="text-5xl font-bold text-gradient">{formatted}</p>
-            <p className="text-sm text-muted-foreground mt-2">{metric}</p>
+          <div className="flex flex-col items-center justify-center h-[180px] text-center">
+            <p className="text-4xl font-bold text-gradient mb-1">{formatted}</p>
+            <p className="text-sm text-muted-foreground">{metric}</p>
             <div className={cn(
               'flex items-center gap-1 mt-3 text-sm font-medium',
-              trend === 'up' ? 'text-success' : 'text-destructive'
+              isPositive ? 'text-success' : 'text-destructive'
             )}>
-              {trend === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-              <span>{(Math.random() * 20 + 5).toFixed(1)}%</span>
+              {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              <span>{isPositive ? '+' : '-'}{trendValue}% vs last period</span>
             </div>
           </div>
         );
 
       case 'table':
         return (
-          <div className="max-h-[250px] overflow-auto scrollbar-thin">
+          <div className="max-h-[220px] overflow-auto scrollbar-thin">
             <Table>
               <TableHeader>
                 <TableRow className="border-border">
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead className="text-xs">{visual.dimensions[0] || 'Name'}</TableHead>
+                  <TableHead className="text-right text-xs">{metric}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {chartData.map((row, i) => (
+                {chartData.slice(0, 8).map((row, i) => (
                   <TableRow key={i} className="border-border">
-                    <TableCell>{row.name}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      {typeof row.value === 'number' ? new Intl.NumberFormat('en-US').format(row.value) : row.value}
+                    <TableCell className="py-2 text-sm">{row.name}</TableCell>
+                    <TableCell className="text-right font-mono text-sm py-2">
+                      {new Intl.NumberFormat('en-US').format(row.value)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -251,7 +306,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
 
       default:
         return (
-          <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[220px] flex items-center justify-center text-muted-foreground">
             Unsupported chart type: {visual.type}
           </div>
         );
@@ -268,11 +323,11 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
         visual.type === 'table' ? 'md:col-span-2' : ''
       )}
     >
-      <Card className="glass-panel border-border/50 overflow-hidden">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-semibold">{visual.title}</CardTitle>
+      <Card className="glass-panel border-border/50 overflow-hidden h-full">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-semibold text-foreground/90">{visual.title}</CardTitle>
         </CardHeader>
-        <CardContent>{renderChart()}</CardContent>
+        <CardContent className="px-4 pb-4">{renderChart()}</CardContent>
       </Card>
     </motion.div>
   );
