@@ -16,6 +16,11 @@ interface GenerateRequest {
   schema: ColumnSchema[];
   sampleData: Record<string, unknown>[];
   prompt: string;
+  currentSpec?: unknown;
+  isRefinement?: boolean;
+  conversationHistory?: { role: string; content: string }[];
+  generateInsights?: boolean;
+  dashboardSpec?: unknown;
 }
 
 serve(async (req) => {

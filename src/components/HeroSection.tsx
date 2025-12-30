@@ -3,9 +3,25 @@ import { Zap, Database, BarChart3, FileJson } from 'lucide-react';
 
 interface HeroSectionProps {
   onTryDemo: () => void;
+  compact?: boolean;
 }
 
-export const HeroSection = ({ onTryDemo }: HeroSectionProps) => {
+export const HeroSection = ({ onTryDemo, compact }: HeroSectionProps) => {
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold">
+          <span className="text-gradient">PromptBI</span>
+        </h1>
+        <button
+          onClick={onTryDemo}
+          className="text-xs px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors"
+        >
+          Try Demo
+        </button>
+      </div>
+    );
+  }
   const features = [
     { icon: Database, label: 'Upload Data' },
     { icon: Zap, label: 'AI Analysis' },
