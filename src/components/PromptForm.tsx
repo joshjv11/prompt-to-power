@@ -55,17 +55,18 @@ export const PromptForm = ({ onGenerate, className }: PromptFormProps) => {
           'w-full h-12 font-semibold text-base',
           'bg-gradient-primary hover:opacity-90',
           'shadow-glow transition-all duration-300',
-          'disabled:opacity-50 disabled:shadow-none'
+          'disabled:opacity-50 disabled:shadow-none',
+          'flex items-center justify-center'
         )}
       >
         {isGenerating ? (
           <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            <Loader2 className="w-5 h-5 mr-2 animate-spin flex-shrink-0" />
             Generating Dashboard...
           </>
         ) : (
           <>
-            <Sparkles className="w-5 h-5 mr-2" />
+            <Sparkles className="w-5 h-5 mr-2 flex-shrink-0" />
             Generate Dashboard
           </>
         )}

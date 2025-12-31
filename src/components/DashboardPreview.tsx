@@ -47,9 +47,9 @@ export const DashboardPreview = ({ className }: DashboardPreviewProps) => {
       animate={{ opacity: 1 }}
       className={cn('space-y-6', className)}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex-between">
         <h2 className="text-2xl font-bold text-gradient">{dashboardSpec.title}</h2>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground flex-shrink-0">
           {dashboardSpec.visuals.length} visual{dashboardSpec.visuals.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -102,8 +102,15 @@ function aggregateData(
 
 const VisualCard = ({ visual, data, index }: VisualCardProps) => {
   const chartData = useMemo(() => {
-    const metric = visual.metrics[0]?.replace(/SUM\(|AVG\(|COUNT\(|\)/g, '') || '';
-    const dim = visual.dimensions[0] || null;
+    // Safely access metrics and dimensions with proper null checks
+    const metrics = visual.metrics || [];
+    const dimensions = visual.dimensions || [];
+    const metric = metrics[0]?.replace(/SUM\(|AVG\(|COUNT\(|\)/g, '') || '';
+    const dim = dimensions[0] || null;
+
+    if (!metric || data.length === 0) {
+      return [];
+    }
 
     const aggregated = aggregateData(data, dim, metric);
 
@@ -119,7 +126,11 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
   }, [visual, data]);
 
   const totalValue = useMemo(() => {
-    const metric = visual.metrics[0]?.replace(/SUM\(|AVG\(|COUNT\(|\)/g, '') || '';
+    const metrics = visual.metrics || [];
+    const metric = metrics[0]?.replace(/SUM\(|AVG\(|COUNT\(|\)/g, '') || '';
+    
+    if (!metric) return 0;
+    
     return data.reduce((sum, row) => {
       const val = typeof row[metric] === 'number' ? row[metric] : parseFloat(String(row[metric])) || 0;
       return sum + val;
@@ -127,7 +138,9 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
   }, [visual, data]);
 
   const renderChart = () => {
-    const metric = visual.metrics[0]?.replace(/SUM\(|AVG\(|COUNT\(|\)/g, '') || 'value';
+    const metrics = visual.metrics || [];
+    const dimensions = visual.dimensions || [];
+    const metric = metrics[0]?.replace(/SUM\(|AVG\(|COUNT\(|\)/g, '') || 'value';
 
     switch (visual.type) {
       case 'bar':
@@ -267,26 +280,27 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
         const isPositive = Math.random() > 0.3;
 
         return (
-          <div className="flex flex-col items-center justify-center h-[180px] text-center">
+          <div className="flex-col-center h-[180px] text-center">
             <p className="text-4xl font-bold text-gradient mb-1">{formatted}</p>
             <p className="text-sm text-muted-foreground">{metric}</p>
             <div className={cn(
-              'flex items-center gap-1 mt-3 text-sm font-medium',
+              'flex-start gap-1 mt-3 text-sm font-medium',
               isPositive ? 'text-success' : 'text-destructive'
             )}>
-              {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              {isPositive ? <TrendingUp className="w-4 h-4 flex-shrink-0" /> : <TrendingDown className="w-4 h-4 flex-shrink-0" />}
               <span>{isPositive ? '+' : '-'}{trendValue}% vs last period</span>
             </div>
           </div>
         );
 
       case 'table':
+        const tableDimensions = visual.dimensions || [];
         return (
           <div className="max-h-[220px] overflow-auto scrollbar-thin">
             <Table>
               <TableHeader>
                 <TableRow className="border-border">
-                  <TableHead className="text-xs">{visual.dimensions[0] || 'Name'}</TableHead>
+                  <TableHead className="text-xs">{tableDimensions[0] || 'Name'}</TableHead>
                   <TableHead className="text-right text-xs">{metric}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -306,12 +320,37 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
 
       default:
         return (
-          <div className="h-[220px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[220px] flex-center text-muted-foreground">
             Unsupported chart type: {visual.type}
           </div>
         );
     }
   };
+
+  // Safety check: ensure we have valid metrics
+  const metrics = visual.metrics || [];
+  if (metrics.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.1 }}
+        className={cn(
+          visual.type === 'card' ? 'md:col-span-1' : '',
+          visual.type === 'table' ? 'md:col-span-2' : ''
+        )}
+      >
+        <Card className="glass-panel border-border/50 overflow-hidden h-full">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm font-semibold text-foreground/90">{visual.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 flex-center h-[220px] text-muted-foreground text-sm">
+            No metrics configured for this visual
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

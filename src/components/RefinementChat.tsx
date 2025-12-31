@@ -83,8 +83,8 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
 
   if (!dashboardSpec) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-6">
-        <MessageSquare className="w-12 h-12 text-muted-foreground/50 mb-4" />
+      <div className="flex-col-center h-full text-center p-6">
+        <MessageSquare className="w-12 h-12 text-muted-foreground/50 mb-4 flex-shrink-0" />
         <h3 className="font-medium text-muted-foreground mb-2">Chat Refinement</h3>
         <p className="text-sm text-muted-foreground/70">
           Generate a dashboard first, then refine it with natural language
@@ -95,8 +95,8 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 p-4 border-b border-border/50">
-        <Sparkles className="w-4 h-4 text-primary" />
+      <div className="flex-start gap-2 p-4 border-b border-border/50 flex-shrink-0">
+        <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
         <h3 className="font-semibold text-sm">Refine Dashboard</h3>
       </div>
 
@@ -142,25 +142,25 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
                   )}
                 >
                   {msg.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-primary/20 flex-center flex-shrink-0">
                       <Bot className="w-4 h-4 text-primary" />
                     </div>
                   )}
                   <div
                     className={cn(
-                      'max-w-[85%] rounded-xl px-3 py-2 text-sm',
+                      'max-w-[85%] rounded-xl px-3 py-2 text-sm flex flex-col',
                       msg.role === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted/70'
                     )}
                   >
                     <p className="break-words">{msg.content}</p>
-                    <span className="text-[10px] opacity-60 mt-1 block">
+                    <span className="text-[10px] opacity-60 mt-1">
                       {formatTime(msg.timestamp)}
                     </span>
                   </div>
                   {msg.role === 'user' && (
-                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-secondary flex-center flex-shrink-0">
                       <User className="w-4 h-4" />
                     </div>
                   )}
@@ -170,12 +170,12 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-3 justify-start"
+                  className="flex-start gap-3"
                 >
-                  <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-primary/20 flex-center flex-shrink-0">
                     <Bot className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="bg-muted/70 rounded-xl px-3 py-2">
+                  <div className="bg-muted/70 rounded-xl px-3 py-2 flex-center">
                     <Loader2 className="w-4 h-4 animate-spin" />
                   </div>
                 </motion.div>
@@ -185,20 +185,20 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
         </AnimatePresence>
       </ScrollArea>
 
-      <div className="p-4 border-t border-border/50">
-        <div className="relative">
+      <div className="p-4 border-t border-border/50 flex-shrink-0">
+        <div className="relative flex items-end">
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a refinement..."
-            className="min-h-[60px] max-h-[120px] pr-12 resize-none text-sm"
+            className="min-h-[60px] max-h-[120px] pr-12 resize-none text-sm flex-grow"
             disabled={isRefining}
           />
           <Button
             size="icon"
-            className="absolute bottom-2 right-2 h-8 w-8"
+            className="absolute bottom-2 right-2 h-8 w-8 flex-shrink-0"
             onClick={handleRefine}
             disabled={!input.trim() || isRefining}
           >

@@ -82,14 +82,14 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         className={cn(
-          'flex flex-col items-center justify-center w-full p-8',
+          'flex-col-center w-full p-8',
           'border-2 border-dashed border-border rounded-xl cursor-pointer',
           'bg-muted/30 hover:bg-muted/50 hover:border-primary/50',
           'transition-all duration-300 group',
           fileName && 'border-primary/50 bg-primary/5'
         )}
       >
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex-col-center gap-3">
           {fileName ? (
             <>
               <div className="p-3 bg-primary/10 rounded-xl">

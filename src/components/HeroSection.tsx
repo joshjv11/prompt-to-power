@@ -9,13 +9,13 @@ interface HeroSectionProps {
 export const HeroSection = ({ onTryDemo, compact }: HeroSectionProps) => {
   if (compact) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex-start gap-3">
         <h1 className="text-2xl font-bold">
           <span className="text-gradient">PromptBI</span>
         </h1>
         <button
           onClick={onTryDemo}
-          className="text-xs px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors"
+          className="text-xs px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors flex items-center"
         >
           Try Demo
         </button>
@@ -56,14 +56,14 @@ export const HeroSection = ({ onTryDemo, compact }: HeroSectionProps) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="flex flex-wrap justify-center gap-3 mb-8"
+        className="flex-wrap-center gap-3 mb-8"
       >
         {features.map((feature, idx) => (
           <div
             key={feature.label}
-            className="flex items-center gap-2 px-4 py-2 bg-card/50 border border-border/50 rounded-full"
+            className="flex-start gap-2 px-4 py-2 bg-card/50 border border-border/50 rounded-full"
           >
-            <feature.icon className="w-4 h-4 text-primary" />
+            <feature.icon className="w-4 h-4 text-primary flex-shrink-0" />
             <span className="text-sm font-medium">{feature.label}</span>
           </div>
         ))}
@@ -75,9 +75,9 @@ export const HeroSection = ({ onTryDemo, compact }: HeroSectionProps) => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
         onClick={onTryDemo}
-        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-primary rounded-xl font-semibold text-primary-foreground shadow-glow hover:opacity-90 transition-opacity"
+        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-primary rounded-xl font-semibold text-primary-foreground shadow-glow hover:opacity-90 transition-opacity"
       >
-        <Zap className="w-5 h-5" />
+        <Zap className="w-5 h-5 flex-shrink-0" />
         Try Demo
       </motion.button>
     </motion.div>

@@ -52,28 +52,28 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
       className={cn('space-y-4', className)}
     >
       {/* File name and schema summary */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex-wrap-center gap-3">
         {fileName && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-card rounded-lg border border-border">
-            <FileSpreadsheet className="w-4 h-4 text-primary" />
+          <div className="flex-start gap-2 px-3 py-1.5 bg-card rounded-lg border border-border">
+            <FileSpreadsheet className="w-4 h-4 text-primary flex-shrink-0" />
             <span className="text-sm font-medium">{fileName}</span>
           </div>
         )}
       </div>
 
       {/* Schema Summary */}
-      <div className="flex flex-wrap gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/20">
-          <TrendingUp className="w-4 h-4 text-primary" />
+      <div className="flex-wrap-center gap-2">
+        <div className="flex-start gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/20">
+          <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
           <span className="text-sm font-medium">{measures.length} Measures</span>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/5 rounded-lg border border-accent/20">
-          <Layers className="w-4 h-4 text-accent" />
+        <div className="flex-start gap-2 px-3 py-1.5 bg-accent/5 rounded-lg border border-accent/20">
+          <Layers className="w-4 h-4 text-accent flex-shrink-0" />
           <span className="text-sm font-medium">{dimensions.length} Dimensions</span>
         </div>
         {dates.length > 0 && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-warning/5 rounded-lg border border-warning/20">
-            <Calendar className="w-4 h-4 text-warning" />
+          <div className="flex-start gap-2 px-3 py-1.5 bg-warning/5 rounded-lg border border-warning/20">
+            <Calendar className="w-4 h-4 text-warning flex-shrink-0" />
             <span className="text-sm font-medium">{dates.length} Date Fields</span>
           </div>
         )}
@@ -87,9 +87,9 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
               <TableRow className="hover:bg-transparent border-border bg-muted/30">
                 {schema.map((col) => (
                   <TableHead key={col.name} className="whitespace-nowrap py-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex-start gap-2">
                       <span className="font-semibold">{col.name}</span>
-                      <Badge variant="outline" className={cn('text-xs font-normal', getTypeBadgeClass(col.type))}>
+                      <Badge variant="outline" className={cn('text-xs font-normal flex items-center', getTypeBadgeClass(col.type))}>
                         {getTypeIcon(col.type)}
                         <span className="ml-1">{col.type}</span>
                       </Badge>

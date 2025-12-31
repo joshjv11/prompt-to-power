@@ -46,12 +46,12 @@ export function InsightsPanel() {
       animate={{ opacity: 1, y: 0 }}
       className="glass-panel p-4"
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+      <div className="flex-between mb-4">
+        <div className="flex-start gap-2">
+          <div className="w-8 h-8 rounded-lg bg-warning/10 flex-center flex-shrink-0">
             <Lightbulb className="w-4 h-4 text-warning" />
           </div>
-          <div>
+          <div className="flex flex-col">
             <h3 className="font-semibold text-sm">Key Insights</h3>
             <p className="text-xs text-muted-foreground">AI-powered analysis</p>
           </div>
@@ -61,12 +61,12 @@ export function InsightsPanel() {
           size="sm"
           onClick={loadInsights}
           disabled={isLoadingInsights}
-          className="gap-2"
+          className="gap-2 flex items-center"
         >
           {isLoadingInsights ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
           ) : (
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4 flex-shrink-0" />
           )}
           Refresh
         </Button>
@@ -79,10 +79,10 @@ export function InsightsPanel() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex items-center justify-center py-8"
+            className="flex-center py-8"
           >
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
+            <div className="flex-start gap-3 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
               <span className="text-sm">Analyzing your dashboard...</span>
             </div>
           </motion.div>
@@ -101,12 +101,13 @@ export function InsightsPanel() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={cn(
-                  'flex items-start gap-3 p-3 rounded-lg',
-                  'bg-muted/30 hover:bg-muted/50 transition-colors'
+                  'flex-start gap-3 p-3 rounded-lg',
+                  'bg-muted/30 hover:bg-muted/50 transition-colors',
+                  'items-start'
                 )}
               >
                 <TrendingUp className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span className="text-sm leading-relaxed">{insight}</span>
+                <span className="text-sm leading-relaxed flex-grow">{insight}</span>
               </motion.li>
             ))}
           </motion.ul>
@@ -116,9 +117,9 @@ export function InsightsPanel() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex items-center justify-center py-8 text-muted-foreground"
+            className="flex-center py-8 text-muted-foreground"
           >
-            <AlertCircle className="w-4 h-4 mr-2" />
+            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
             <span className="text-sm">No insights available</span>
           </motion.div>
         )}

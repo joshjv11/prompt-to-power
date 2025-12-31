@@ -144,13 +144,13 @@ const Index = () => {
   const hasDashboard = dashboardSpec !== null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Background gradient */}
       <div className="fixed inset-0 gradient-glow pointer-events-none" />
 
-      <div className="relative z-10 max-w-[1800px] mx-auto px-4 py-6">
+      <div className="relative z-10 max-w-[1800px] mx-auto px-4 py-6 flex flex-col flex-grow w-full">
         {/* Header with save/share */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex-between mb-6 flex-shrink-0">
           <HeroSection onTryDemo={handleTryDemo} compact />
           
           <div className="flex items-center gap-2">
@@ -186,24 +186,24 @@ const Index = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3"
+              className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex-start gap-3"
             >
-              <AlertCircle className="w-5 h-5 text-destructive" />
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
               <span className="text-destructive">{error}</span>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* 3-Column Layout */}
-        <div className="grid lg:grid-cols-[350px_1fr_300px] gap-6">
+        {/* 3-Column Layout - Flexbox */}
+        <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-0">
           {/* Left Panel - Data Input (30%) */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-4"
+            className="flex flex-col space-y-4 flex-shrink-0 lg:w-[350px]"
           >
-            <div className="glass-panel p-4 space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="glass-panel p-4 space-y-4 flex flex-col">
+              <div className="flex-between">
                 <h2 className="text-lg font-semibold">Data Input</h2>
                 {hasData && (
                   <Button
@@ -223,15 +223,17 @@ const Index = () => {
               <DataPreview />
             </div>
 
-            <div className="glass-panel p-4">
-              <div className="flex items-center justify-between mb-3">
+            <div className="glass-panel p-4 flex flex-col">
+              <div className="flex-between mb-3">
                 <h2 className="text-lg font-semibold">Prompt</h2>
-                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs flex items-center">
                   <Sparkles className="w-3 h-3 mr-1" />
                   AI
                 </Badge>
               </div>
-              <PromptForm onGenerate={generateDashboard} />
+              <div className="flex-grow">
+                <PromptForm onGenerate={generateDashboard} />
+              </div>
             </div>
           </motion.div>
 
@@ -239,16 +241,16 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            className="flex flex-col space-y-4 flex-grow min-w-0"
           >
-            <div className="glass-panel p-4 min-h-[500px]">
-              <div className="flex items-center justify-between mb-4">
+            <div className="glass-panel p-4 min-h-[500px] flex flex-col">
+              <div className="flex-between mb-4 flex-shrink-0">
                 <h2 className="text-lg font-semibold">Dashboard Preview</h2>
                 {aiSource && (
                   <Badge 
                     variant="outline" 
                     className={cn(
-                      'text-xs',
+                      'text-xs flex items-center',
                       aiSource === 'ai' 
                         ? 'bg-success/10 text-success border-success/20' 
                         : 'bg-warning/10 text-warning border-warning/20'
@@ -270,7 +272,7 @@ const Index = () => {
                     key="empty"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center py-20 text-center"
+                    className="flex-col-center py-20 text-center flex-grow"
                   >
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                       <svg
@@ -314,9 +316,10 @@ const Index = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className={cn(
-              'glass-panel h-[calc(100vh-140px)] sticky top-6',
-              'hidden lg:block',
-              showChat ? 'block' : 'hidden'
+              'glass-panel h-[calc(100vh-140px)] sticky top-6 flex flex-col',
+              'hidden lg:flex',
+              'flex-shrink-0 lg:w-[300px]',
+              showChat ? 'flex' : 'hidden'
             )}
           >
             <RefinementChat />
@@ -345,8 +348,8 @@ const Index = () => {
               exit={{ opacity: 0, y: 100 }}
               className="fixed inset-x-0 bottom-0 z-50 lg:hidden"
             >
-              <div className="glass-panel h-[60vh] rounded-t-2xl border-t border-border/50">
-                <div className="flex items-center justify-between p-3 border-b border-border/50">
+              <div className="glass-panel h-[60vh] rounded-t-2xl border-t border-border/50 flex flex-col">
+                <div className="flex-between p-3 border-b border-border/50 flex-shrink-0">
                   <span className="font-medium text-sm">Refine Dashboard</span>
                   <Button
                     variant="ghost"
@@ -356,7 +359,7 @@ const Index = () => {
                     Close
                   </Button>
                 </div>
-                <div className="h-[calc(60vh-50px)]">
+                <div className="h-[calc(60vh-50px)] flex-grow min-h-0">
                   <RefinementChat />
                 </div>
               </div>
@@ -365,7 +368,7 @@ const Index = () => {
         </AnimatePresence>
 
         {/* Footer */}
-        <footer className="mt-12 text-center text-xs text-muted-foreground">
+        <footer className="mt-12 text-center text-xs text-muted-foreground flex-shrink-0">
           <p>Built for Microsoft Hackathon • Powered by Gemini AI</p>
         </footer>
       </div>
