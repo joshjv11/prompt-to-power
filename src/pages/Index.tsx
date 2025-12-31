@@ -179,17 +179,43 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Error Alert */}
+        {/* Error Alert - Enhanced */}
         <AnimatePresence>
           {error && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex-start gap-3"
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl"
             >
-              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
-              <span className="text-destructive">{error}</span>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-destructive" />
+                </div>
+                <div className="flex-grow">
+                  <h4 className="font-semibold text-destructive mb-1">Generation Failed</h4>
+                  <p className="text-sm text-destructive/80 mb-3">{error}</p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={generateDashboard}
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                    >
+                      <RotateCcw className="w-3 h-3 mr-1" />
+                      Try Again
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setError(null)}
+                      className="text-muted-foreground"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

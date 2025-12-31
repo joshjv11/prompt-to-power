@@ -86,44 +86,86 @@ export async function generateDashboardWithAI(
   let retries = 0;
   const maxRetries = 2;
 
+  // Validate inputs first
+  if (!schema || schema.length === 0) {
+    throw new Error('No data schema detected. Please upload a valid CSV file with headers.');
+  }
+  
+  if (!prompt || prompt.trim().length < 3) {
+    throw new Error('Please provide a more detailed prompt to generate your dashboard.');
+  }
+
   while (retries <= maxRetries) {
     try {
+      // Step 1: Connecting
+      onProgress?.('Connecting to AI service...');
+      await new Promise((r) => setTimeout(r, 300)); // Small delay for UX
+      
+      // Step 2: Analyzing
       onProgress?.('Analyzing data schema...');
       
       const { data, error } = await supabase.functions.invoke('generate-dashboard', {
-        body: { schema, sampleData, prompt },
+        body: { schema, sampleData: sampleData.slice(0, 50), prompt },
       });
 
+      // Handle network/function errors
       if (error) {
         console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to call AI service');
+        const errorMessage = error.message?.toLowerCase() || '';
+        
+        if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+          throw new Error('Network error. Please check your internet connection and try again.');
+        }
+        if (errorMessage.includes('timeout')) {
+          throw new Error('Request timed out. The AI service is busy, please try again.');
+        }
+        if (errorMessage.includes('unauthorized') || errorMessage.includes('401')) {
+          throw new Error('Authentication error. Please refresh the page and try again.');
+        }
+        
+        throw new Error(`AI service error: ${error.message || 'Unknown error occurred'}`);
       }
 
+      // Handle fallback signal from AI
       if (data?.fallback) {
         console.log('AI returned fallback signal:', data.error);
-        throw new Error(data.error || 'AI requested fallback');
+        onProgress?.('Using smart fallback...');
+        const fallbackSpec = generateFallbackSpec(schema, prompt);
+        return { spec: fallbackSpec, source: 'fallback' };
       }
 
+      // Validate response
       if (data?.spec) {
+        onProgress?.('Generating visualizations...');
+        await new Promise((r) => setTimeout(r, 200)); // Small delay for UX
+        
+        // Validate spec structure
+        if (!data.spec.title || !Array.isArray(data.spec.visuals) || data.spec.visuals.length === 0) {
+          console.warn('Invalid spec structure, using fallback');
+          throw new Error('AI returned invalid dashboard structure');
+        }
+        
         onProgress?.('Dashboard ready!');
         return { spec: data.spec, source: 'ai' };
       }
 
-      throw new Error('Invalid response from AI service');
+      throw new Error('No dashboard generated. Please try a different prompt.');
     } catch (err) {
       retries++;
-      console.warn(`AI attempt ${retries} failed:`, err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.warn(`AI attempt ${retries} failed:`, errorMessage);
       
       if (retries <= maxRetries) {
-        onProgress?.(`Retrying... (${retries}/${maxRetries})`);
+        onProgress?.(`Retry attempt ${retries}/${maxRetries}...`);
         await new Promise((r) => setTimeout(r, 1000 * retries));
       }
     }
   }
 
   // Fallback to local generation
-  console.log('Using fallback generator');
+  console.log('Using fallback generator after retries');
   onProgress?.('Using smart fallback...');
+  await new Promise((r) => setTimeout(r, 300)); // Small delay for UX
   const fallbackSpec = generateFallbackSpec(schema, prompt);
   return { spec: fallbackSpec, source: 'fallback' };
 }
