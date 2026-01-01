@@ -12,14 +12,33 @@ export interface DataRow {
   [key: string]: string | number | null;
 }
 
+export type VisualType = 
+  | 'card'
+  | 'bar'
+  | 'line'
+  | 'pie'
+  | 'combo'
+  | 'area'
+  | 'scatter'
+  | 'histogram'
+  | 'heatmap'
+  | 'waterfall'
+  | 'gauge'
+  | 'table'
+  | 'funnel'
+  | 'bullet'
+  | 'treemap';
+
 export interface Visual {
   id: string;
-  type: 'bar' | 'line' | 'pie' | 'table' | 'card' | 'area' | 'combo';
+  type: VisualType;
   title: string;
   metrics: string[];
   dimensions: string[];
-  filters?: string[];
+  filters?: Record<string, string[]>;
   sort?: 'asc' | 'desc';
+  topN?: number;
+  bins?: number;
 }
 
 export interface DashboardSpec {
