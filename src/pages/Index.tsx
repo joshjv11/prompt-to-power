@@ -43,7 +43,7 @@ const Index = () => {
   } = useAppStore();
 
   const { generateShareUrl } = useUrlParams();
-  const [aiSource, setAiSource] = useState<'ai' | 'fallback' | null>(null);
+  const [aiSource, setAiSource] = useState<'ai' | 'fallback' | 'robust' | null>(null);
   const [progressStep, setProgressStep] = useState<string>('');
   const [showChat, setShowChat] = useState(true);
   const [copied, setCopied] = useState(false);
