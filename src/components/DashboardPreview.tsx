@@ -523,10 +523,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.1 }}
-        className={cn(
-          visual.type === 'card' ? 'md:col-span-1' : '',
-          visual.type === 'table' ? 'md:col-span-2' : ''
-        )}
+        className={visual.type === 'card' ? 'md:col-span-1' : ''}
       >
         <Card className="glass-panel border-border/50 overflow-hidden h-full">
           <CardHeader className="pb-2 pt-4 px-4">
