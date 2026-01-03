@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart,
@@ -27,7 +27,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppStore, Visual, DataRow, VisualType } from '@/store/appStore';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Activity, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, BarChart3, MousePointerClick } from 'lucide-react';
+import { useDrillThrough, applyDrillFilters } from '@/hooks/useDrillThrough';
+import { DrillFilterBar } from '@/components/DrillFilterBar';
 import { aggregateForVisual, calculateHistogram, calculateScatterData, extractColumnName } from '@/lib/dataAggregation';
 
 const COLORS = [
@@ -47,6 +49,7 @@ interface DashboardPreviewProps {
 
 export const DashboardPreview = ({ className }: DashboardPreviewProps) => {
   const { dashboardSpec, rawData } = useAppStore();
+  const { filters } = useDrillThrough();
 
   if (!dashboardSpec) return null;
 
@@ -58,10 +61,20 @@ export const DashboardPreview = ({ className }: DashboardPreviewProps) => {
     >
       <div className="flex-between">
         <h2 className="text-2xl font-bold text-gradient">{dashboardSpec.title}</h2>
-        <span className="text-sm text-muted-foreground flex-shrink-0">
-          {dashboardSpec.visuals.length} visual{dashboardSpec.visuals.length !== 1 ? 's' : ''}
-        </span>
+        <div className="flex items-center gap-3">
+          {filters.length === 0 && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <MousePointerClick className="w-3 h-3" />
+              Click charts to filter
+            </span>
+          )}
+          <span className="text-sm text-muted-foreground flex-shrink-0">
+            {dashboardSpec.visuals.length} visual{dashboardSpec.visuals.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
+
+      <DrillFilterBar />
 
       <div className="grid gap-4 md:grid-cols-2">
         {dashboardSpec.visuals.map((visual, idx) => (
@@ -84,18 +97,45 @@ interface VisualCardProps {
 }
 
 const VisualCard = ({ visual, data, index }: VisualCardProps) => {
-  // Use smart aggregation
+  const { filters, toggleFilter } = useDrillThrough();
+  
+  // Apply drill-through filters (except from this visual's own filter)
+  const filteredData = useMemo(() => {
+    return applyDrillFilters(data, filters, visual.id);
+  }, [data, filters, visual.id]);
+
+  // Use smart aggregation on filtered data
   const chartData = useMemo(() => {
-    if (data.length === 0) return [];
+    if (filteredData.length === 0) return [];
 
     // Handle special chart types
     if (visual.type === 'histogram') {
       const metric = visual.metrics?.[0] || '';
-      return calculateHistogram(data, metric, visual.bins || 10);
+      return calculateHistogram(filteredData, metric, visual.bins || 10);
     }
 
-    return aggregateForVisual(data, visual);
-  }, [visual, data]);
+    return aggregateForVisual(filteredData, visual);
+  }, [visual, filteredData]);
+
+  // Handle chart click for drill-through
+  const handleChartClick = useCallback((dataPoint: any) => {
+    if (!dataPoint?.name) return;
+    
+    const dimension = visual.dimensions?.[0];
+    if (!dimension) return;
+
+    toggleFilter({
+      dimension,
+      value: String(dataPoint.name),
+      sourceVisualId: visual.id
+    });
+  }, [visual.dimensions, visual.id, toggleFilter]);
+
+  // Check if this visual has an active filter
+  const hasActiveFilter = useMemo(() => {
+    const dimension = visual.dimensions?.[0];
+    return dimension && filters.some(f => f.dimension === dimension && f.sourceVisualId === visual.id);
+  }, [filters, visual.dimensions, visual.id]);
 
   const totalValue = useMemo(() => {
     const metrics = visual.metrics || [];
@@ -103,11 +143,11 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
     
     if (!metric) return 0;
     
-    return data.reduce((sum, row) => {
+    return filteredData.reduce((sum, row) => {
       const val = typeof row[metric] === 'number' ? row[metric] : parseFloat(String(row[metric])) || 0;
       return sum + val;
     }, 0);
-  }, [visual, data]);
+  }, [visual, filteredData]);
 
   const renderChart = () => {
     const metrics = visual.metrics || [];
@@ -118,7 +158,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }} onClick={(e) => e?.activePayload?.[0]?.payload && handleChartClick(e.activePayload[0].payload)}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey="name"
@@ -139,7 +179,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
                 }}
                 formatter={(value: number) => [new Intl.NumberFormat('en-US').format(value), metric]}
               />
-              <Bar dataKey="value" fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} className="cursor-pointer" />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -147,7 +187,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
       case 'line':
         return (
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }} onClick={(e) => e?.activePayload?.[0]?.payload && handleChartClick(e.activePayload[0].payload)}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey="name"
@@ -174,6 +214,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
                 stroke={COLORS[index % COLORS.length]}
                 strokeWidth={2}
                 dot={{ fill: COLORS[index % COLORS.length], strokeWidth: 0 }}
+                className="cursor-pointer"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -182,7 +223,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
       case 'area':
         return (
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }} onClick={(e) => e?.activePayload?.[0]?.payload && handleChartClick(e.activePayload[0].payload)}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey="name"
@@ -205,6 +246,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
                 dataKey="value"
                 stroke={COLORS[index % COLORS.length]}
                 fill={`${COLORS[index % COLORS.length]}33`}
+                className="cursor-pointer"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -224,6 +266,8 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
                 dataKey="value"
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 labelLine={false}
+                onClick={(_, idx) => chartData[idx] && handleChartClick(chartData[idx])}
+                className="cursor-pointer"
               >
                 {chartData.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -244,7 +288,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
       case 'combo':
         return (
           <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }} onClick={(e) => e?.activePayload?.[0]?.payload && handleChartClick(e.activePayload[0].payload)}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey="name"
@@ -261,7 +305,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
                   borderRadius: '8px',
                 }}
               />
-              <Bar dataKey="value" fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} className="cursor-pointer" />
               <Line type="monotone" dataKey="value" stroke={COLORS[(index + 1) % COLORS.length]} strokeWidth={2} />
             </ComposedChart>
           </ResponsiveContainer>
@@ -493,7 +537,11 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
               </TableHeader>
               <TableBody>
                 {chartData.slice(0, visual.topN || 10).map((row, i) => (
-                  <TableRow key={i} className="border-border">
+                  <TableRow 
+                    key={i} 
+                    className="border-border cursor-pointer hover:bg-primary/5 transition-colors"
+                    onClick={() => handleChartClick(row)}
+                  >
                     <TableCell className="py-2 text-sm">{row.name}</TableCell>
                     <TableCell className="text-right font-mono text-sm py-2">
                       {new Intl.NumberFormat('en-US').format(row.value)}
@@ -552,9 +600,19 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
       transition={{ delay: index * 0.1 }}
       className={getColSpan(visual.type)}
     >
-      <Card className="glass-panel border-border/50 overflow-hidden h-full">
+      <Card className={cn(
+        "glass-panel border-border/50 overflow-hidden h-full transition-all",
+        hasActiveFilter && "ring-2 ring-primary/50 border-primary/30"
+      )}>
         <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-sm font-semibold text-foreground/90">{visual.title}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-foreground/90">{visual.title}</CardTitle>
+            {hasActiveFilter && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">
+                Filtering
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="px-4 pb-4">{renderChart()}</CardContent>
       </Card>
