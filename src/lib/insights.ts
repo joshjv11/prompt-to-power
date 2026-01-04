@@ -10,8 +10,16 @@ export async function generateInsights(
     const { data: response, error } = await supabase.functions.invoke('generate-dashboard', {
       body: {
         schema,
-        sampleData: data.slice(0, 20),
-        prompt: `Generate 4-5 actionable business insights based on this dashboard: ${spec.title}`,
+        sampleData: data.slice(0, 50),
+        prompt: `Analyze this data and generate 5 actionable business insights. Focus on:
+1. Key performance highlights with specific numbers
+2. Trends and patterns (growth, decline, seasonality)
+3. Comparisons (top vs bottom performers)
+4. Actionable recommendations
+5. Potential concerns or opportunities
+
+Dashboard: ${spec.title}
+Visuals: ${spec.visuals.map(v => v.title).join(', ')}`,
         generateInsights: true,
         dashboardSpec: spec,
       },
@@ -40,16 +48,21 @@ function generateLocalInsights(
   const measures = schema.filter((s) => s.type === 'measure');
   const dimensions = schema.filter((s) => s.type === 'dimension');
 
-  // Calculate totals for measures
+  // Calculate totals and averages for measures
   measures.forEach((measure) => {
-    const total = data.reduce((sum, row) => {
-      const value = row[measure.name];
-      return sum + (typeof value === 'number' ? value : 0);
-    }, 0);
-
-    if (total > 0) {
+    const values = data.map(row => {
+      const val = row[measure.name];
+      return typeof val === 'number' ? val : 0;
+    }).filter(v => v !== 0);
+    
+    if (values.length > 0) {
+      const total = values.reduce((sum, v) => sum + v, 0);
+      const avg = total / values.length;
+      const max = Math.max(...values);
+      const min = Math.min(...values);
+      
       insights.push(
-        `Total ${measure.name}: ${formatNumber(total)}`
+        `📊 Total ${measure.name}: ${formatNumber(total)} (avg: ${formatNumber(avg)}, range: ${formatNumber(min)} - ${formatNumber(max)})`
       );
     }
   });
@@ -75,25 +88,34 @@ function generateLocalInsights(
       const percentage = ((topValue / total) * 100).toFixed(1);
       
       insights.push(
-        `"${topKey}" leads with ${formatNumber(topValue)} ${measure.name} (${percentage}% of total)`
+        `🏆 "${topKey}" leads with ${formatNumber(topValue)} ${measure.name} (${percentage}% of total)`
       );
 
       if (sorted.length >= 3) {
         const top3Total = sorted.slice(0, 3).reduce((sum, [, val]) => sum + val, 0);
         const top3Pct = ((top3Total / total) * 100).toFixed(1);
         insights.push(
-          `Top 3 ${dim.name}s account for ${top3Pct}% of all ${measure.name}`
+          `📈 Top 3 ${dim.name}s account for ${top3Pct}% of all ${measure.name} — concentration opportunity`
         );
+        
+        // Compare top to bottom
+        if (sorted.length >= 2) {
+          const [, bottomValue] = sorted[sorted.length - 1];
+          const ratio = (topValue / bottomValue).toFixed(1);
+          insights.push(
+            `⚡ Top performer outperforms bottom by ${ratio}x — investigate success factors`
+          );
+        }
       }
     }
   }
 
-  // Row count insight
-  insights.push(`Dataset contains ${data.length} records across ${dimensions.length} dimensions`);
-
-  // Visual count
+  // Data completeness insight
+  const recordCount = data.length;
+  const dimensionCount = dimensions.length;
+  const measureCount = measures.length;
   insights.push(
-    `Dashboard includes ${spec.visuals.length} visualizations for comprehensive analysis`
+    `📋 Dataset: ${recordCount.toLocaleString()} records, ${dimensionCount} dimensions, ${measureCount} measures`
   );
 
   return insights.slice(0, 5);
@@ -105,6 +127,9 @@ function formatNumber(num: number): string {
   }
   if (num >= 1_000) {
     return `${(num / 1_000).toFixed(1)}K`;
+  }
+  if (num < 1 && num > 0) {
+    return num.toFixed(2);
   }
   return num.toLocaleString();
 }
