@@ -12,11 +12,13 @@ import { GeneratingLoader } from '@/components/GeneratingLoader';
 import { RefinementChat } from '@/components/RefinementChat';
 import { InsightsPanel } from '@/components/InsightsPanel';
 import { SavedDashboardsDrawer } from '@/components/SavedDashboardsDrawer';
+import { TemplateGallery } from '@/components/TemplateGallery';
+import { ShareDialog } from '@/components/ShareDialog';
+import { EnhancedExportButton } from '@/components/EnhancedExportButton';
 import { generateDashboardWithAI } from '@/lib/aiService';
-import { useUrlParams } from '@/hooks/useUrlParams';
 import { demoDatasets } from '@/data/sampleData';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Sparkles, Cpu, Share2, Copy, Check, MessageSquare, PanelRightClose, PanelRight } from 'lucide-react';
+import { AlertCircle, RotateCcw, Sparkles, Cpu, MessageSquare, PanelRightClose, PanelRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -42,11 +44,9 @@ const Index = () => {
     reset,
   } = useAppStore();
 
-  const { generateShareUrl } = useUrlParams();
   const [aiSource, setAiSource] = useState<'ai' | 'fallback' | 'robust' | null>(null);
   const [progressStep, setProgressStep] = useState<string>('');
   const [showChat, setShowChat] = useState(true);
-  const [copied, setCopied] = useState(false);
 
   const handleTryDemo = useCallback(() => {
     const salesDemo = demoDatasets[0];
@@ -111,20 +111,6 @@ const Index = () => {
     setAiSource(null);
   }, [reset, clearChatHistory]);
 
-  const handleShare = useCallback(async () => {
-    const datasetName = fileName?.replace('.csv', '').replace('_', ' ') || 'sales';
-    const url = generateShareUrl(datasetName, prompt);
-    
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      toast({ title: 'Link copied!', description: 'Share this URL to load the same dataset and prompt.' });
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast({ title: 'Copy failed', variant: 'destructive' });
-    }
-  }, [fileName, prompt, generateShareUrl]);
-
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -157,15 +143,10 @@ const Index = () => {
             <SavedDashboardsDrawer />
             
             {hasDashboard && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShare}
-                className="gap-2"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                <span className="hidden sm:inline">Share</span>
-              </Button>
+              <>
+                <ShareDialog />
+                <EnhancedExportButton />
+              </>
             )}
             
             <Button
@@ -329,6 +310,16 @@ const Index = () => {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Template Gallery - Show when no data */}
+            {!hasData && (
+              <TemplateGallery onSelectTemplate={() => {
+                toast({
+                  title: 'Template loaded!',
+                  description: 'Click Generate to create your dashboard.',
+                });
+              }} />
+            )}
 
             {/* Insights Panel */}
             <InsightsPanel />
