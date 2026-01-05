@@ -23,6 +23,7 @@ export const DashboardPreview = ({ className }: DashboardPreviewProps) => {
 
   return (
     <motion.div
+      id="dashboard-preview"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className={cn('space-y-6', className)}

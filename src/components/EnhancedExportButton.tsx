@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +15,7 @@ import {
   FileJson,
   FileText,
   FileSpreadsheet,
+  FileImage,
   Loader2,
   Check,
   ChevronDown,
@@ -23,19 +23,47 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export function EnhancedExportButton() {
   const { dashboardSpec, rawData, schema } = useAppStore();
   const [isExporting, setIsExporting] = useState<string | null>(null);
   const [lastExport, setLastExport] = useState<string | null>(null);
 
-  const handleExport = useCallback(async (type: 'pbit' | 'json' | 'csv' | 'txt') => {
+  const handleExport = useCallback(async (type: 'pbit' | 'json' | 'csv' | 'txt' | 'pdf') => {
     if (!dashboardSpec || !rawData.length) return;
 
     setIsExporting(type);
 
     try {
       switch (type) {
+        case 'pdf': {
+          const dashboardElement = document.getElementById('dashboard-preview');
+          if (!dashboardElement) {
+            toast({ title: 'Dashboard not found', variant: 'destructive' });
+            break;
+          }
+
+          const canvas = await html2canvas(dashboardElement, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({
+            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height],
+          });
+
+          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+          pdf.save(`${dashboardSpec.title.replace(/\s+/g, '_')}.pdf`);
+          toast({ title: 'PDF exported!' });
+          break;
+        }
         case 'pbit': {
           const template = generatePBITTemplate(dashboardSpec, schema, rawData);
           const blob = new Blob([template], { type: 'application/json' });
@@ -128,6 +156,26 @@ export function EnhancedExportButton() {
         <DropdownMenuLabel>Export Options</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
+        <DropdownMenuItem
+          onClick={() => handleExport('pdf')}
+          className="gap-3 cursor-pointer"
+          disabled={isExporting === 'pdf'}
+        >
+          <div className="w-8 h-8 rounded-lg bg-destructive/10 flex-center flex-shrink-0">
+            {isExporting === 'pdf' ? (
+              <Loader2 className="w-4 h-4 animate-spin text-destructive" />
+            ) : lastExport === 'pdf' ? (
+              <Check className="w-4 h-4 text-success" />
+            ) : (
+              <FileImage className="w-4 h-4 text-destructive" />
+            )}
+          </div>
+          <div>
+            <div className="font-medium">PDF Document</div>
+            <div className="text-xs text-muted-foreground">Download as PDF</div>
+          </div>
+        </DropdownMenuItem>
+
         <DropdownMenuItem
           onClick={() => handleExport('pbit')}
           className="gap-3 cursor-pointer"
