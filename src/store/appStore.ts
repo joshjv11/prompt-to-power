@@ -70,6 +70,8 @@ interface AppState {
   fileName: string | null;
   rawData: DataRow[];
   schema: ColumnSchema[];
+  dataSamplingEnabled: boolean;
+  maxPreviewRows: number;
   
   // Prompt
   prompt: string;
@@ -91,6 +93,8 @@ interface AppState {
   
   // Actions
   setFileData: (fileName: string, data: DataRow[], schema: ColumnSchema[]) => void;
+  setDataSampling: (enabled: boolean, maxRows?: number) => void;
+  getPreviewData: () => DataRow[];
   setPrompt: (prompt: string) => void;
   setDashboardSpec: (spec: DashboardSpec | null) => void;
   setIsGenerating: (isGenerating: boolean) => void;
@@ -117,6 +121,8 @@ const initialState = {
   fileName: null,
   rawData: [],
   schema: [],
+  dataSamplingEnabled: true,
+  maxPreviewRows: 10000,
   prompt: '',
   dashboardSpec: null,
   isGenerating: false,
@@ -133,6 +139,17 @@ export const useAppStore = create<AppState>()(
       ...initialState,
       
       setFileData: (fileName, rawData, schema) => set({ fileName, rawData, schema, error: null }),
+      setDataSampling: (enabled, maxRows) => set({ 
+        dataSamplingEnabled: enabled, 
+        maxPreviewRows: maxRows ?? 10000 
+      }),
+      getPreviewData: () => {
+        const state = get();
+        if (!state.dataSamplingEnabled || state.rawData.length <= state.maxPreviewRows) {
+          return state.rawData;
+        }
+        return state.rawData.slice(0, state.maxPreviewRows);
+      },
       setPrompt: (prompt) => set({ prompt }),
       setDashboardSpec: (dashboardSpec) => set({ dashboardSpec }),
       setIsGenerating: (isGenerating) => set({ isGenerating }),
@@ -217,8 +234,36 @@ export const useAppStore = create<AppState>()(
     {
       name: 'promptbi-storage',
       partialize: (state) => ({
+        // Only persist saved dashboards, not rawData (which is stored in savedDashboards)
         savedDashboards: state.savedDashboards,
       }),
+      // Add storage configuration to handle large data
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          try {
+            return JSON.parse(str);
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch (e) {
+            // If storage is full, try to clear old dashboards
+            console.warn('LocalStorage full, clearing old dashboards');
+            if (value?.state?.savedDashboards) {
+              // Keep only the 10 most recent dashboards
+              const recent = value.state.savedDashboards.slice(0, 10);
+              value.state.savedDashboards = recent;
+              localStorage.setItem(name, JSON.stringify(value));
+            }
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
     }
   )
 );

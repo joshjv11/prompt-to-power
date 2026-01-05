@@ -6,22 +6,56 @@ import * as XLSX from 'xlsx';
 import { useAppStore, DataRow } from '@/store/appStore';
 import { detectSchema } from '@/utils/schemaDetector';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
+import { getErrorInfo } from '@/lib/errorMessages';
 
 interface FileUploaderProps {
   className?: string;
 }
 
 export const FileUploader = ({ className }: FileUploaderProps) => {
-  const { setFileData, setError, fileName } = useAppStore();
+  const { setFileData, setError, fileName, setDataSampling } = useAppStore();
 
   const processData = useCallback((name: string, data: DataRow[]) => {
     if (data.length === 0) {
-      setError('The file appears to be empty');
+      const errorInfo = getErrorInfo('The file appears to be empty');
+      setError(errorInfo.message);
+      toast({
+        title: errorInfo.message,
+        description: errorInfo.suggestion,
+        variant: 'destructive',
+      });
       return;
     }
+
+    // Dataset size validation and warnings
+    const rowCount = data.length;
+    const LARGE_DATASET_THRESHOLD = 50000;
+    const VERY_LARGE_DATASET_THRESHOLD = 100000;
+
+    if (rowCount > VERY_LARGE_DATASET_THRESHOLD) {
+      toast({
+        title: 'Very large dataset detected',
+        description: `${rowCount.toLocaleString()} rows. Performance may be impacted. Consider using a sample of your data.`,
+        variant: 'destructive',
+      });
+      setDataSampling(true, 10000);
+    } else if (rowCount > LARGE_DATASET_THRESHOLD) {
+      toast({
+        title: 'Large dataset detected',
+        description: `${rowCount.toLocaleString()} rows. Using data sampling for optimal performance.`,
+      });
+      setDataSampling(true, 10000);
+    } else if (rowCount > 10000) {
+      setDataSampling(true, 10000);
+    } else {
+      setDataSampling(false);
+    }
+
+    // Use sampling for schema detection (already optimized in schemaDetector, but ensure it)
     const schema = detectSchema(data);
     setFileData(name, data, schema);
-  }, [setFileData, setError]);
+  }, [setFileData, setError, setDataSampling]);
 
   const handleFile = useCallback((file: File) => {
     const extension = file.name.split('.').pop()?.toLowerCase();
@@ -34,7 +68,13 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
           processData(file.name, results.data as DataRow[]);
         },
         error: (error) => {
-          setError(`Failed to parse CSV: ${error.message}`);
+          const errorInfo = getErrorInfo(`Failed to parse CSV: ${error.message}`);
+          setError(errorInfo.message);
+          toast({
+            title: errorInfo.message,
+            description: errorInfo.suggestion,
+            variant: 'destructive',
+          });
         },
       });
     } else if (['xlsx', 'xls'].includes(extension || '')) {
@@ -47,12 +87,24 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
           const data = XLSX.utils.sheet_to_json(worksheet) as DataRow[];
           processData(file.name, data);
         } catch (error) {
-          setError('Failed to parse Excel file');
+          const errorInfo = getErrorInfo('Failed to parse Excel file');
+          setError(errorInfo.message);
+          toast({
+            title: errorInfo.message,
+            description: errorInfo.suggestion,
+            variant: 'destructive',
+          });
         }
       };
       reader.readAsBinaryString(file);
     } else {
-      setError('Please upload a CSV or Excel file');
+      const errorInfo = getErrorInfo('Please upload a CSV or Excel file');
+      setError(errorInfo.message);
+      toast({
+        title: errorInfo.message,
+        description: errorInfo.suggestion,
+        variant: 'destructive',
+      });
     }
   }, [processData, setError]);
 

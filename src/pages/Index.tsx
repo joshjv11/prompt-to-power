@@ -93,10 +93,12 @@ const Index = () => {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to generate dashboard';
-      setError(message);
+      const { getErrorInfo } = await import('@/lib/errorMessages');
+      const errorInfo = getErrorInfo(message);
+      setError(errorInfo.message);
       toast({
         title: 'Generation failed',
-        description: message,
+        description: errorInfo.suggestion || message,
         variant: 'destructive',
       });
     } finally {

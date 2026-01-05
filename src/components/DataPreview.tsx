@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -10,11 +11,16 @@ interface DataPreviewProps {
 }
 
 export const DataPreview = ({ className }: DataPreviewProps) => {
-  const { rawData, schema, fileName } = useAppStore();
+  const { rawData, schema, fileName, getPreviewData } = useAppStore();
 
   if (rawData.length === 0 || schema.length === 0) return null;
 
-  const previewData = rawData.slice(0, 8);
+  // Use preview data with sampling if enabled - limit display to 100 rows for performance
+  const previewData = useMemo(() => {
+    const data = getPreviewData();
+    // For display, limit to 100 rows for performance (virtual scrolling can be added later if needed)
+    return data.slice(0, 100);
+  }, [rawData, getPreviewData]);
   const measures = schema.filter((s) => s.type === 'measure');
   const dimensions = schema.filter((s) => s.type === 'dimension');
   const dates = schema.filter((s) => s.type === 'date');
@@ -81,9 +87,9 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
 
       {/* Data Table */}
       <div className="rounded-xl border border-border overflow-hidden bg-card/50">
-        <div className="overflow-x-auto scrollbar-thin">
+        <div className="overflow-x-auto scrollbar-thin max-h-[400px] overflow-y-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 bg-muted/30 z-10">
               <TableRow className="hover:bg-transparent border-border bg-muted/30">
                 {schema.map((col) => (
                   <TableHead key={col.name} className="whitespace-nowrap py-3">
@@ -122,6 +128,7 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
         <div className="px-4 py-2 bg-muted/30 border-t border-border">
           <p className="text-xs text-muted-foreground">
             Showing {previewData.length} of {rawData.length} rows • {schema.length} columns detected
+            {previewData.length < rawData.length && ' (using data sampling for performance)'}
           </p>
         </div>
       </div>

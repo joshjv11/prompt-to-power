@@ -1,4 +1,5 @@
 import { DataRow, Visual } from '@/store/appStore';
+import { aggregationCache } from './aggregationCache';
 
 export interface AggregatedRow {
   name: string;
@@ -167,18 +168,35 @@ export function aggregateData(
 // Helper function to aggregate data for a specific visual
 export function aggregateForVisual(
   rawData: DataRow[],
-  visual: Visual
+  visual: Visual,
+  useCache: boolean = false,
+  cacheKey?: string
 ): AggregatedRow[] {
   const metrics = visual.metrics || [];
   const dimensions = visual.dimensions || [];
 
-  return aggregateData(rawData, {
+  // Simple caching check - if cacheKey provided and cache available, check cache first
+  if (useCache && cacheKey) {
+    const cached = aggregationCache.get(cacheKey);
+    if (cached) {
+      return cached as AggregatedRow[];
+    }
+  }
+
+  const result = aggregateData(rawData, {
     metrics,
     dimensions,
     sort: visual.sort || null,
     topN: visual.topN,
     filters: visual.filters
   });
+
+  // Cache the result if caching is enabled
+  if (useCache && cacheKey) {
+    aggregationCache.set(cacheKey, result);
+  }
+
+  return result;
 }
 
 // Calculate histogram bins

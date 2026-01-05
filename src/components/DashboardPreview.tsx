@@ -104,7 +104,7 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
     return applyDrillFilters(data, filters, visual.id);
   }, [data, filters, visual.id]);
 
-  // Use smart aggregation on filtered data
+  // Use smart aggregation on filtered data with caching
   const chartData = useMemo(() => {
     if (filteredData.length === 0) return [];
 
@@ -114,7 +114,12 @@ const VisualCard = ({ visual, data, index }: VisualCardProps) => {
       return calculateHistogram(filteredData, metric, visual.bins || 10);
     }
 
-    return aggregateForVisual(filteredData, visual);
+    // Generate cache key from visual config and data length
+    const cacheKey = `${visual.id}_${filteredData.length}_${JSON.stringify(visual.metrics)}_${JSON.stringify(visual.dimensions)}_${visual.sort || 'none'}_${visual.topN || 'none'}`;
+    
+    // Use caching for performance (only for datasets > 1000 rows)
+    const useCache = filteredData.length > 1000;
+    return aggregateForVisual(filteredData, visual, useCache, cacheKey);
   }, [visual, filteredData]);
 
   // Handle chart click for drill-through
