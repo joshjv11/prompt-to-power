@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useRef, useCallback } from 'react';
 
 export interface DrillFilter {
   dimension: string;
@@ -14,7 +15,7 @@ interface DrillThroughState {
   toggleFilter: (filter: DrillFilter) => void;
 }
 
-export const useDrillThrough = create<DrillThroughState>((set, get) => ({
+const useDrillThroughStore = create<DrillThroughState>((set, get) => ({
   filters: [],
   
   addFilter: (filter) => set((state) => {
@@ -46,6 +47,26 @@ export const useDrillThrough = create<DrillThroughState>((set, get) => ({
     }
   }
 }));
+
+// Debounced hook wrapper for drill-through with 150ms debounce
+export function useDrillThrough() {
+  const store = useDrillThroughStore();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedToggleFilter = useCallback((filter: DrillFilter) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      store.toggleFilter(filter);
+    }, 150);
+  }, [store]);
+
+  return {
+    ...store,
+    toggleFilter: debouncedToggleFilter,
+  };
+}
 
 // Helper to filter data based on active drill filters
 export function applyDrillFilters<T extends Record<string, unknown>>(
