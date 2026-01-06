@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, MessageSquare, Loader2, Sparkles, User, Bot } from 'lucide-react';
+import { Send, MessageSquare, Loader2, Sparkles, User, Bot, Lightbulb, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,6 +8,11 @@ import { useAppStore, ChatMessage } from '@/store/appStore';
 import { refineDashboard } from '@/lib/conversational';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { 
+  generateContextualSuggestions, 
+  getSuggestionColor, 
+  ChatSuggestion 
+} from '@/lib/chatSuggestions';
 
 interface RefinementChatProps {
   onRefine?: () => void;
@@ -26,14 +31,34 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
 
   const [input, setInput] = useState('');
   const [isRefining, setIsRefining] = useState(false);
+  const [suggestionSeed, setSuggestionSeed] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Track used suggestions to avoid repeats
+  const [usedSuggestions, setUsedSuggestions] = useState<string[]>([]);
+
+  // Generate contextual suggestions based on dashboard state
+  const suggestions = useMemo(() => {
+    if (!dashboardSpec) return [];
+    return generateContextualSuggestions(dashboardSpec, schema, usedSuggestions);
+  }, [dashboardSpec, schema, usedSuggestions, suggestionSeed]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [chatHistory]);
+
+  const handleSelectSuggestion = (suggestion: ChatSuggestion) => {
+    setInput(suggestion.text);
+    setUsedSuggestions(prev => [...prev, suggestion.text]);
+    textareaRef.current?.focus();
+  };
+
+  const refreshSuggestions = () => {
+    setSuggestionSeed(s => s + 1);
+  };
 
   const handleRefine = async () => {
     if (!input.trim() || !dashboardSpec || isRefining) return;
@@ -50,6 +75,9 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
       setDashboardSpec(result.spec);
       addChatMessage({ role: 'assistant', content: result.message });
       setInsights([]); // Clear insights to refresh
+      
+      // Refresh suggestions after refinement
+      setSuggestionSeed(s => s + 1);
       
       toast({
         title: 'Dashboard updated!',
@@ -106,27 +134,43 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-8"
+              className="py-4"
             >
-              <p className="text-sm text-muted-foreground mb-4">
-                Ask me to refine your dashboard:
-              </p>
-              <div className="space-y-2">
-                {[
-                  'Filter to last 6 months',
-                  'Change bar chart to pie chart',
-                  'Add a trend line',
-                  'Show top 5 only',
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => setInput(suggestion)}
-                    className="block w-full text-left text-xs px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+              <div className="flex-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">Suggestions</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={refreshSuggestions}
+                  className="h-7 w-7 p-0"
+                  title="Refresh suggestions"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                {suggestions.slice(0, 6).map((suggestion, index) => (
+                  <motion.button
+                    key={suggestion.text}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    onClick={() => handleSelectSuggestion(suggestion)}
+                    className={cn(
+                      'block w-full text-left text-xs px-3 py-2 rounded-lg transition-colors',
+                      getSuggestionColor(suggestion.category)
+                    )}
                   >
-                    "{suggestion}"
-                  </button>
+                    {suggestion.text}
+                  </motion.button>
                 ))}
               </div>
+              <p className="text-[10px] text-muted-foreground/60 mt-4 text-center">
+                Or type your own refinement below
+              </p>
             </motion.div>
           ) : (
             <div className="space-y-4">
@@ -184,6 +228,27 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
           )}
         </AnimatePresence>
       </ScrollArea>
+
+      {/* Quick suggestions - show when chat has history */}
+      {chatHistory.length > 0 && suggestions.length > 0 && !isRefining && (
+        <div className="px-4 py-2 border-t border-border/30 flex-shrink-0">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
+            <Lightbulb className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            {suggestions.slice(0, 3).map((suggestion) => (
+              <button
+                key={suggestion.text}
+                onClick={() => handleSelectSuggestion(suggestion)}
+                className={cn(
+                  'text-[10px] px-2 py-1 rounded-full whitespace-nowrap transition-colors flex-shrink-0',
+                  getSuggestionColor(suggestion.category)
+                )}
+              >
+                {suggestion.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="p-4 border-t border-border/50 flex-shrink-0">
         <div className="relative flex items-end">
