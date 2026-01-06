@@ -13,6 +13,7 @@ import { RefinementChat } from '@/components/RefinementChat';
 import { InsightsPanel } from '@/components/InsightsPanel';
 import { SavedDashboardsDrawer } from '@/components/SavedDashboardsDrawer';
 import { TemplateGallery } from '@/components/TemplateGallery';
+import { ExamplesGallery } from '@/components/ExamplesGallery';
 import { ShareDialog } from '@/components/ShareDialog';
 import { EnhancedExportButton } from '@/components/EnhancedExportButton';
 import { generateDashboardWithAI } from '@/lib/aiService';
@@ -312,6 +313,16 @@ const Index = () => {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Examples Gallery - Show when no data */}
+            {!hasData && (
+              <ExamplesGallery onLoadExample={() => {
+                toast({
+                  title: 'Example loaded!',
+                  description: 'Explore and customize your dashboard.',
+                });
+              }} />
+            )}
 
             {/* Template Gallery - Show when no data */}
             {!hasData && (
