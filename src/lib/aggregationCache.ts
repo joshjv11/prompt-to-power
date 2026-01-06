@@ -69,3 +69,4 @@ class LRUCache {
 // Singleton cache instance
 export const aggregationCache = new LRUCache(50, 5 * 60 * 1000);
 
+
