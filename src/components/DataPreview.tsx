@@ -13,17 +13,21 @@ interface DataPreviewProps {
 export const DataPreview = ({ className }: DataPreviewProps) => {
   const { rawData, schema, fileName, getPreviewData } = useAppStore();
 
-  if (rawData.length === 0 || schema.length === 0) return null;
-
   // Use preview data with sampling if enabled - limit display to 100 rows for performance
+  // IMPORTANT: All hooks must be called before any conditional returns
   const previewData = useMemo(() => {
+    if (rawData.length === 0) return [];
     const data = getPreviewData();
     // For display, limit to 100 rows for performance (virtual scrolling can be added later if needed)
     return data.slice(0, 100);
   }, [rawData, getPreviewData]);
-  const measures = schema.filter((s) => s.type === 'measure');
-  const dimensions = schema.filter((s) => s.type === 'dimension');
-  const dates = schema.filter((s) => s.type === 'date');
+  
+  const measures = useMemo(() => schema.filter((s) => s.type === 'measure'), [schema]);
+  const dimensions = useMemo(() => schema.filter((s) => s.type === 'dimension'), [schema]);
+  const dates = useMemo(() => schema.filter((s) => s.type === 'date'), [schema]);
+
+  // Early return after all hooks are called
+  if (rawData.length === 0 || schema.length === 0) return null;
 
   const getTypeIcon = (type: string) => {
     switch (type) {
