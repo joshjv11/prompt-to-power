@@ -127,7 +127,7 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn('relative', className)}
+      className={cn('relative file-uploader', className)}
     >
       <label
         htmlFor="file-upload"

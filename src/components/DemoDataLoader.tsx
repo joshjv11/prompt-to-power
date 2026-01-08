@@ -33,7 +33,7 @@ export const DemoDataLoader = ({ className }: DemoDataLoaderProps) => {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn('space-y-3', className)}
+      className={cn('space-y-3 demo-data-loader', className)}
     >
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Database className="w-4 h-4" />

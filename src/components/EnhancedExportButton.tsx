@@ -142,7 +142,7 @@ export function EnhancedExportButton() {
       <DropdownMenuTrigger asChild>
         <Button 
           className={cn(
-            'gap-2 bg-gradient-to-r from-success to-emerald-600',
+            'gap-2 bg-gradient-to-r from-success to-emerald-600 export-button',
             'hover:from-success/90 hover:to-emerald-600/90',
             'text-success-foreground shadow-md shadow-success/20'
           )}
