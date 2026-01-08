@@ -16,7 +16,9 @@ import { TemplateGallery } from '@/components/TemplateGallery';
 import { ExamplesGallery } from '@/components/ExamplesGallery';
 import { ShareDialog } from '@/components/ShareDialog';
 import { EnhancedExportButton } from '@/components/EnhancedExportButton';
+import { OnboardingTour } from '@/components/OnboardingTour';
 import { generateDashboardWithAI } from '@/lib/aiService';
+import { track } from '@/lib/analytics';
 import { demoDatasets } from '@/data/sampleData';
 import { toast } from '@/hooks/use-toast';
 import { AlertCircle, RotateCcw, Sparkles, Cpu, MessageSquare, PanelRightClose, PanelRight } from 'lucide-react';
@@ -68,6 +70,9 @@ const Index = () => {
     setProgressStep('Connecting to AI...');
     setInsights([]);
     
+    // Track prompt submission
+    track.promptSubmitted(prompt.length, schema.length);
+    
     // Add user prompt to chat history
     addChatMessage({ role: 'user', content: prompt });
 
@@ -82,6 +87,9 @@ const Index = () => {
       setDashboardSpec(result.spec);
       setAiSource(result.source);
       
+      // Track dashboard generation
+      track.dashboardGenerated(result.spec.visuals.length, result.source);
+      
       // Add AI response to chat
       addChatMessage({ 
         role: 'assistant', 
@@ -94,6 +102,7 @@ const Index = () => {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to generate dashboard';
+      track.generationFailed(message);
       const { getErrorInfo } = await import('@/lib/errorMessages');
       const errorInfo = getErrorInfo(message);
       setError(errorInfo.message);
@@ -134,6 +143,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Onboarding Tour */}
+      <OnboardingTour />
+      
       {/* Background gradient */}
       <div className="fixed inset-0 gradient-glow pointer-events-none" />
 
@@ -251,7 +263,7 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col space-y-4 flex-grow min-w-0"
+            className="flex flex-col space-y-4 flex-grow min-w-0 dashboard-preview-area"
           >
             <div className="glass-panel p-4 min-h-[500px] flex flex-col">
               <div className="flex-between mb-4 flex-shrink-0">
@@ -317,6 +329,7 @@ const Index = () => {
             {/* Examples Gallery - Show when no data */}
             {!hasData && (
               <ExamplesGallery onLoadExample={() => {
+                track.exampleLoaded('gallery');
                 toast({
                   title: 'Example loaded!',
                   description: 'Explore and customize your dashboard.',

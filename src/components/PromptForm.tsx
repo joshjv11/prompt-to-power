@@ -27,7 +27,7 @@ export const PromptForm = ({ onGenerate, className }: PromptFormProps) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       onSubmit={handleSubmit}
-      className={cn('space-y-4', className)}
+      className={cn('space-y-4 prompt-form', className)}
     >
       <div className="space-y-2">
         <label htmlFor="prompt" className="text-sm font-medium text-foreground">
@@ -52,7 +52,7 @@ export const PromptForm = ({ onGenerate, className }: PromptFormProps) => {
         type="submit"
         disabled={isDisabled}
         className={cn(
-          'w-full h-12 font-semibold text-base',
+          'w-full h-12 font-semibold text-base generate-button',
           'bg-gradient-primary hover:opacity-90',
           'shadow-glow transition-all duration-300',
           'disabled:opacity-50 disabled:shadow-none',

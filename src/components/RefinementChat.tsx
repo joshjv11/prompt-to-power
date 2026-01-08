@@ -122,7 +122,7 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full refinement-chat">
       <div className="flex-start gap-2 p-4 border-b border-border/50 flex-shrink-0">
         <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
         <h3 className="font-semibold text-sm">Refine Dashboard</h3>
