@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useAppStore, DataRow } from '@/store/appStore';
@@ -128,47 +127,41 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
   }, [handleFile]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn('relative', className)}
-    >
+    <div className={cn('relative file-uploader', className)}>
       <label
         id="file-upload"
         htmlFor="file-upload-input"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         className={cn(
-          'flex-col-center w-full p-8',
-          'border-2 border-dashed border-border rounded-xl cursor-pointer',
-          'bg-muted/30 hover:bg-muted/50 hover:border-primary/50',
-          'transition-all duration-300 group',
+          'flex items-center gap-3 w-full p-4',
+          'border border-dashed border-border rounded-lg cursor-pointer',
+          'bg-muted/20 hover:bg-muted/40 hover:border-primary/50',
+          'transition-all duration-200 group',
           fileName && 'border-primary/50 bg-primary/5'
         )}
       >
-        <div className="flex-col-center gap-3">
-          {fileName ? (
-            <>
-              <div className="p-3 bg-primary/10 rounded-xl">
-                <FileSpreadsheet className="w-8 h-8 text-primary" />
-              </div>
-              <div className="text-center">
-                <p className="font-medium text-foreground">{fileName}</p>
-                <p className="text-sm text-muted-foreground">Click or drag to replace</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="p-3 bg-muted rounded-xl group-hover:bg-primary/10 transition-colors">
-                <Upload className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-              <div className="text-center">
-                <p className="font-medium text-foreground">Drop your file here</p>
-                <p className="text-sm text-muted-foreground">CSV or Excel files supported</p>
-              </div>
-            </>
-          )}
-        </div>
+        {fileName ? (
+          <>
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <FileSpreadsheet className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm truncate">{fileName}</p>
+              <p className="text-xs text-muted-foreground">Click to replace</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="p-2 bg-muted rounded-lg group-hover:bg-primary/10 transition-colors">
+              <Upload className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">Upload CSV or Excel</p>
+              <p className="text-xs text-muted-foreground">Drag & drop or click</p>
+            </div>
+          </>
+        )}
         <input
           id="file-upload-input"
           type="file"
@@ -177,6 +170,6 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
           className="hidden"
         />
       </label>
-    </motion.div>
+    </div>
   );
 };

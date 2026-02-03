@@ -1,9 +1,6 @@
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/appStore';
 import { demoDatasets, DemoDataset } from '@/data/sampleData';
 import { cn } from '@/lib/utils';
-import { Database, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface DemoDataLoaderProps {
@@ -30,38 +27,28 @@ export const DemoDataLoader = ({ className }: DemoDataLoaderProps) => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn('space-y-3', className)}
-    >
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Database className="w-4 h-4" />
-        <span>Or try with sample data:</span>
-      </div>
-      <div className="flex flex-wrap gap-2">
+    <div className={cn('demo-data-loader', className)}>
+      <div className="flex flex-wrap gap-1.5">
+        <span className="text-xs text-muted-foreground mr-1 self-center">Samples:</span>
         {demoDatasets.map((dataset) => {
           const loaded = isLoaded(dataset.name);
           return (
-            <Button
+            <button
               key={dataset.name}
-              variant={loaded ? "default" : "outline"}
-              size="sm"
               onClick={() => loadDemo(dataset)}
               className={cn(
-                'transition-all',
+                'text-xs px-2.5 py-1 rounded-full transition-all',
                 loaded 
-                  ? 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30' 
-                  : 'border-border hover:border-primary hover:bg-primary/5'
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
               )}
             >
-              {loaded && <Check className="w-3 h-3 mr-1" />}
-              <span className="mr-2">{dataset.icon}</span>
+              <span className="mr-1">{dataset.icon}</span>
               {dataset.name}
-            </Button>
+            </button>
           );
         })}
       </div>
-    </motion.div>
+    </div>
   );
 };
