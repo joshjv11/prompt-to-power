@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAppStore } from '@/store/appStore';
 import { cn } from '@/lib/utils';
-import { Hash, Type, Calendar, TrendingUp, Layers, FileSpreadsheet } from 'lucide-react';
+import { Hash, Type, Calendar, TrendingUp, Layers, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { validateDataQuality, DataQualityReport } from '@/lib/dataValidation';
 
 interface DataPreviewProps {
   className?: string;
@@ -12,6 +14,7 @@ interface DataPreviewProps {
 
 export const DataPreview = ({ className }: DataPreviewProps) => {
   const { rawData, schema, fileName, getPreviewData } = useAppStore();
+  const [qualityReport, setQualityReport] = useState<DataQualityReport | null>(null);
 
   // Use preview data with sampling if enabled - limit display to 100 rows for performance
   // IMPORTANT: All hooks must be called before any conditional returns
@@ -25,6 +28,16 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
   const measures = useMemo(() => schema.filter((s) => s.type === 'measure'), [schema]);
   const dimensions = useMemo(() => schema.filter((s) => s.type === 'dimension'), [schema]);
   const dates = useMemo(() => schema.filter((s) => s.type === 'date'), [schema]);
+
+  // Validate data quality
+  useEffect(() => {
+    if (rawData.length > 0 && schema.length > 0) {
+      const report = validateDataQuality(rawData, schema);
+      setQualityReport(report);
+    } else {
+      setQualityReport(null);
+    }
+  }, [rawData, schema]);
 
   // Early return after all hooks are called
   if (rawData.length === 0 || schema.length === 0) return null;
@@ -129,9 +142,55 @@ export const DataPreview = ({ className }: DataPreviewProps) => {
             </TableBody>
           </Table>
         </div>
+        {/* Data Quality Report */}
+        {qualityReport && qualityReport.issues.length > 0 && (
+          <div className="px-4 py-3 bg-muted/30 border-t border-border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {qualityReport.score >= 80 ? (
+                  <CheckCircle2 className="w-4 h-4 text-success" />
+                ) : qualityReport.score >= 60 ? (
+                  <AlertTriangle className="w-4 h-4 text-warning" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                )}
+                <span className="text-xs font-medium">
+                  Data Quality Score: {qualityReport.score}/100
+                </span>
+              </div>
+            </div>
+            {qualityReport.errors.length > 0 && (
+              <Alert variant="destructive" className="mb-2 py-2">
+                <AlertTitle className="text-xs">Errors ({qualityReport.errors.length})</AlertTitle>
+                <AlertDescription className="text-xs">
+                  {qualityReport.errors.slice(0, 2).map((e) => e.message).join(', ')}
+                  {qualityReport.errors.length > 2 && ` +${qualityReport.errors.length - 2} more`}
+                </AlertDescription>
+              </Alert>
+            )}
+            {qualityReport.warnings.length > 0 && (
+              <Alert variant="default" className="py-2">
+                <AlertTitle className="text-xs">Warnings ({qualityReport.warnings.length})</AlertTitle>
+                <AlertDescription className="text-xs">
+                  {qualityReport.warnings.slice(0, 2).map((w) => w.message).join(', ')}
+                  {qualityReport.warnings.length > 2 && ` +${qualityReport.warnings.length - 2} more`}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+        
         <div className="px-4 py-2 bg-muted/30 border-t border-border">
           <p className="text-xs text-muted-foreground">
             Showing {previewData.length} of {rawData.length} rows • {schema.length} columns detected
+            {qualityReport && qualityReport.score < 100 && (
+              <span className={cn(
+                'ml-2',
+                qualityReport.score >= 80 ? 'text-success' : qualityReport.score >= 60 ? 'text-warning' : 'text-destructive'
+              )}>
+                • Quality: {qualityReport.score}%
+              </span>
+            )}
             {previewData.length < rawData.length && ' (using data sampling for performance)'}
           </p>
         </div>

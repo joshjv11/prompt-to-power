@@ -8,6 +8,7 @@ import { detectSchema } from '@/utils/schemaDetector';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { getErrorInfo } from '@/lib/errorMessages';
+import { trackEvent } from '@/lib/analytics';
 
 interface FileUploaderProps {
   className?: string;
@@ -55,6 +56,9 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
     // Use sampling for schema detection (already optimized in schemaDetector, but ensure it)
     const schema = detectSchema(data);
     setFileData(name, data, schema);
+    
+    // Track file upload
+    trackEvent.fileUploaded(name, data.length, undefined);
   }, [setFileData, setError, setDataSampling]);
 
   const handleFile = useCallback((file: File) => {
@@ -130,7 +134,8 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
       className={cn('relative', className)}
     >
       <label
-        htmlFor="file-upload"
+        id="file-upload"
+        htmlFor="file-upload-input"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         className={cn(
@@ -165,7 +170,7 @@ export const FileUploader = ({ className }: FileUploaderProps) => {
           )}
         </div>
         <input
-          id="file-upload"
+          id="file-upload-input"
           type="file"
           accept=".csv,.xlsx,.xls"
           onChange={handleChange}

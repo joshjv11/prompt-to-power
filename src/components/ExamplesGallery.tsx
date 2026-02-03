@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useAppStore, DashboardSpec, ColumnSchema } from '@/store/appStore';
 import { demoDatasets } from '@/data/sampleData';
 import { toast } from '@/hooks/use-toast';
+import { trackEvent } from '@/lib/analytics';
 
 interface ExampleDashboard {
   id: string;
@@ -189,6 +190,7 @@ export function ExamplesGallery({ onLoadExample }: ExamplesGalleryProps) {
     setPrompt(example.prompt);
     setDashboardSpec(example.spec);
     setPreviewExample(null);
+    trackEvent.exampleLoaded(example.id);
     onLoadExample?.();
     toast({
       title: 'Example loaded!',

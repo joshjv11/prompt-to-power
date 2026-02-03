@@ -16,6 +16,12 @@ import { TemplateGallery } from '@/components/TemplateGallery';
 import { ExamplesGallery } from '@/components/ExamplesGallery';
 import { ShareDialog } from '@/components/ShareDialog';
 import { EnhancedExportButton } from '@/components/EnhancedExportButton';
+import { OnboardingTour } from '@/components/OnboardingTour';
+import { ShortcutsHelp } from '@/components/ShortcutsHelp';
+import { triggerConfetti } from '@/components/ui/confetti';
+import { useAnalytics } from '@/hooks/useAnalytics';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { generateDashboardWithAI } from '@/lib/aiService';
 import { demoDatasets } from '@/data/sampleData';
 import { toast } from '@/hooks/use-toast';
@@ -48,6 +54,26 @@ const Index = () => {
   const [aiSource, setAiSource] = useState<'ai' | 'fallback' | 'robust' | null>(null);
   const [progressStep, setProgressStep] = useState<string>('');
   const [showChat, setShowChat] = useState(true);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const { trackEvent } = useAnalytics();
+  useUndoRedo(); // Initialize undo/redo keyboard shortcuts
+  
+  useKeyboardShortcuts({
+    onSave: () => {
+      try {
+        saveDashboard();
+        toast({ title: 'Dashboard saved!' });
+      } catch (err) {
+        toast({ title: 'Save failed', variant: 'destructive' });
+      }
+    },
+    onExport: () => {
+      // Trigger export menu if available
+      const exportButton = document.querySelector('[data-export-button]') as HTMLElement;
+      exportButton?.click();
+    },
+    onShowHelp: () => setShowShortcuts(true),
+  });
 
   const handleTryDemo = useCallback(() => {
     const salesDemo = demoDatasets[0];
@@ -62,6 +88,7 @@ const Index = () => {
   const generateDashboard = useCallback(async () => {
     if (!rawData.length || !prompt.trim()) return;
 
+    const startTime = Date.now();
     setIsGenerating(true);
     setError(null);
     setAiSource(null);
@@ -79,6 +106,8 @@ const Index = () => {
         (step) => setProgressStep(step)
       );
 
+      const generationTime = Date.now() - startTime;
+      
       setDashboardSpec(result.spec);
       setAiSource(result.source);
       
@@ -88,15 +117,28 @@ const Index = () => {
         content: `Generated "${result.spec.title}" with ${result.spec.visuals.length} visualizations` 
       });
 
+      // Track successful generation
+      trackEvent.dashboardGenerated(result.source, result.spec.visuals.length, generationTime);
+
+      // Success celebration
+      triggerConfetti();
+      
       toast({
-        title: result.source === 'ai' ? 'AI Dashboard generated!' : 'Dashboard generated!',
-        description: `Created ${result.spec.visuals.length} visualizations${result.source === 'ai' ? ' using Gemini AI' : ''}.`,
+        title: result.source === 'ai' ? '🎉 AI Dashboard generated!' : '🎉 Dashboard generated!',
+        description: `Created ${result.spec.visuals.length} visualizations${result.source === 'ai' ? ' using Gemini AI' : ''}. Try refining it or export to Power BI!`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to generate dashboard';
       const { getErrorInfo } = await import('@/lib/errorMessages');
       const errorInfo = getErrorInfo(message);
       setError(errorInfo.message);
+      
+      // Track error
+      trackEvent.errorOccurred('dashboard_generation', message, {
+        hasData: rawData.length > 0,
+        hasPrompt: prompt.trim().length > 0,
+      });
+      
       toast({
         title: 'Generation failed',
         description: errorInfo.suggestion || message,
@@ -106,7 +148,7 @@ const Index = () => {
       setIsGenerating(false);
       setProgressStep('');
     }
-  }, [rawData, prompt, schema, setIsGenerating, setError, setDashboardSpec, addChatMessage, setInsights]);
+  }, [rawData, prompt, schema, setIsGenerating, setError, setDashboardSpec, addChatMessage, setInsights, trackEvent]);
 
   const handleReset = useCallback(() => {
     reset();
@@ -137,12 +179,19 @@ const Index = () => {
       {/* Background gradient */}
       <div className="fixed inset-0 gradient-glow pointer-events-none" />
 
+      {/* Onboarding Tour */}
+      <OnboardingTour hasData={hasData} hasDashboard={hasDashboard} />
+      
+      {/* Shortcuts Help */}
+      <ShortcutsHelp open={showShortcuts} onOpenChange={setShowShortcuts} />
+
       <div className="relative z-10 max-w-[1800px] mx-auto px-4 py-6 flex flex-col flex-grow w-full">
         {/* Header with save/share */}
         <div className="flex-between mb-6 flex-shrink-0">
           <HeroSection onTryDemo={handleTryDemo} compact />
           
           <div className="flex items-center gap-2">
+            <AuthDialog trigger={<Button variant="ghost" size="sm">Sign In</Button>} />
             <SavedDashboardsDrawer />
             
             {hasDashboard && (
@@ -205,7 +254,7 @@ const Index = () => {
         </AnimatePresence>
 
         {/* 3-Column Layout - Flexbox */}
-        <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-0">
+        <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-0 transition-all duration-300">
           {/* Left Panel - Data Input (30%) */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -229,6 +278,12 @@ const Index = () => {
               </div>
 
               <FileUploader />
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">OR</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <DataSourceConnector />
               <DemoDataLoader />
               <DataPreview />
             </div>
@@ -345,6 +400,7 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
+            data-chat-panel
             className={cn(
               'glass-panel h-[calc(100vh-140px)] sticky top-6 flex flex-col',
               'hidden lg:flex',
@@ -399,7 +455,7 @@ const Index = () => {
 
         {/* Footer */}
         <footer className="mt-12 text-center text-xs text-muted-foreground flex-shrink-0">
-          <p>Built for Microsoft Hackathon • Powered by Gemini AI</p>
+          <p className="text-xs text-muted-foreground">Powered by Gemini AI</p>
         </footer>
       </div>
     </div>

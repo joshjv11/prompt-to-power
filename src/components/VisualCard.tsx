@@ -577,11 +577,14 @@ const VisualCardComponent = ({ visual, data, index, filters, onChartClick }: Vis
       ref={containerRef}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.05, 0.3) }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.08, 0.3), ease: [0.4, 0, 0.2, 1] }}
+      whileHover={{ scale: 1.01 }}
       className={getColSpan(visual.type)}
     >
       <Card className={cn(
-        "glass-panel border-border/50 overflow-hidden h-full transition-all",
+        "glass-panel border-border/50 overflow-hidden h-full transition-all duration-300 ease-out",
+        "hover:shadow-xl hover:border-primary/40 hover:-translate-y-1",
+        "active:scale-[0.98]",
         hasActiveFilter && "ring-2 ring-primary/50 border-primary/30"
       )}>
         <CardHeader className="pb-2 pt-4 px-4">

@@ -30,38 +30,51 @@ serve(async (req) => {
   }
 
   try {
-    const { schema, sampleData, prompt } = await req.json() as GenerateRequest;
+    const { schema, sampleData, prompt, currentSpec, isRefinement, conversationHistory } = await req.json() as GenerateRequest;
     
     console.log("Generating dashboard for prompt:", prompt);
     console.log("Schema columns:", schema.map(s => s.name).join(", "));
+    console.log("Is refinement:", isRefinement);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are PromptBI - an expert Power BI dashboard architect. 
-Your task is to analyze the provided data schema and sample data, then create an optimal dashboard specification based on the user's natural language request.
+    const systemPrompt = `You are PromptBI - an expert Power BI dashboard architect with deep understanding of data visualization best practices. 
+Your task is to analyze the provided data schema and sample data, then create an optimal, production-ready dashboard specification based on the user's natural language request.
 
-SCHEMA (columns with their roles):
+CONTEXT:
+- You understand business intelligence and data storytelling
+- You create dashboards that are both informative and visually appealing
+- You consider the user's intent and provide comprehensive insights
+
+DATA SCHEMA (columns with their roles):
 ${JSON.stringify(schema, null, 2)}
 
-SAMPLE DATA (first 10 rows):
+SAMPLE DATA (first 10 rows for context):
 ${JSON.stringify(sampleData.slice(0, 10), null, 2)}
 
-RULES:
-1. Only use column names that exist in the schema
-2. Use appropriate chart types for the data:
-   - "card" for single KPI metrics (totals, averages)
-   - "bar" for comparing categories (dimensions vs measures)
-   - "line" for time series trends (date dimensions)
-   - "pie" for distribution/share analysis (max 6 slices)
-   - "table" for detailed data views (top N rankings)
-3. Generate 3-6 visuals that together tell a complete data story
-4. Make titles clear and business-friendly
-5. Always include at least one KPI card
+CHART TYPE GUIDELINES:
+1. "card" - Use for single KPI metrics (totals, averages, percentages). Perfect for key performance indicators.
+2. "bar" - Use for comparing categories (dimensions vs measures). Best for ranking, comparisons, and categorical analysis.
+3. "line" - Use for time series trends (date dimensions). Ideal for showing trends over time, growth patterns, and temporal changes.
+4. "pie" - Use for distribution/share analysis (max 6 slices). Great for showing proportions and market share.
+5. "table" - Use for detailed data views (top N rankings). Perfect for drill-down data, detailed lists, and comprehensive views.
 
-You MUST respond with ONLY valid JSON matching this exact structure:
+DASHBOARD DESIGN PRINCIPLES:
+1. Always include at least one KPI card to highlight key metrics
+2. Generate 3-6 visuals that together tell a complete, coherent data story
+3. Make titles clear, business-friendly, and descriptive
+4. Use appropriate aggregations: SUM for totals, AVG for averages, COUNT for counts
+5. Consider data relationships and create visuals that complement each other
+6. Only use column names that exist in the schema (case-insensitive matching)
+7. For time-based analysis, prioritize line charts
+8. For categorical comparisons, use bar charts
+9. For distributions, use pie charts (when slices ≤ 6)
+
+OUTPUT FORMAT:
+You MUST respond with ONLY valid JSON matching this exact structure (no markdown, no explanations):
 {
   "title": "Dashboard Title",
   "visuals": [
@@ -76,7 +89,7 @@ You MUST respond with ONLY valid JSON matching this exact structure:
   ]
 }
 
-Do not include any markdown, explanations, or text outside the JSON.`;
+Remember: Think like a business analyst. Create dashboards that answer real business questions and provide actionable insights.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -84,14 +97,29 @@ Do not include any markdown, explanations, or text outside the JSON.`;
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+        body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Create a dashboard for: "${prompt}"` },
+          ...(isRefinement && currentSpec
+            ? [
+                {
+                  role: "user",
+                  content: `CURRENT DASHBOARD SPECIFICATION:
+${JSON.stringify(currentSpec, null, 2)}
+
+CONVERSATION HISTORY:
+${conversationHistory?.map(m => `${m.role}: ${m.content}`).join('\n') || 'No previous conversation'}
+
+USER REQUEST: "${prompt}"
+
+Please update the dashboard specification based on the user's request. Maintain the overall structure but modify visuals, metrics, dimensions, or chart types as requested. If the user wants to add something new, add it. If they want to change something, update it. If they want to remove something, remove it. Return the complete updated specification.`,
+                },
+              ]
+            : [{ role: "user", content: `Create a dashboard for: "${prompt}"` }]),
         ],
         max_tokens: 2000,
-        temperature: 0.3,
+        temperature: isRefinement ? 0.2 : 0.3, // Lower temperature for refinements for more consistency
       }),
     });
 

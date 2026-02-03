@@ -38,9 +38,11 @@ export async function refineDashboard(
     }
 
     if (data?.spec) {
+      // Generate a more conversational message
+      const message = generateRefinementMessage(refinement, currentSpec, data.spec);
       return {
         spec: data.spec,
-        message: `Updated dashboard based on: "${refinement}"`,
+        message,
       };
     }
 
@@ -51,9 +53,45 @@ export async function refineDashboard(
   }
 }
 
+function generateRefinementMessage(
+  refinement: string,
+  oldSpec: DashboardSpec,
+  newSpec: DashboardSpec
+): string {
+  const oldVisualCount = oldSpec.visuals.length;
+  const newVisualCount = newSpec.visuals.length;
+  const visualDiff = newVisualCount - oldVisualCount;
+  
+  const lower = refinement.toLowerCase();
+  
+  if (lower.includes('add') || lower.includes('include') || lower.includes('show')) {
+    if (visualDiff > 0) {
+      return `Added ${visualDiff} new visualization${visualDiff > 1 ? 's' : ''} to your dashboard.`;
+    }
+  }
+  
+  if (lower.includes('remove') || lower.includes('delete') || lower.includes('hide')) {
+    if (visualDiff < 0) {
+      return `Removed ${Math.abs(visualDiff)} visualization${Math.abs(visualDiff) > 1 ? 's' : ''} from your dashboard.`;
+    }
+  }
+  
+  if (lower.includes('change') || lower.includes('update') || lower.includes('modify')) {
+    return `Updated your dashboard based on: "${refinement}"`;
+  }
+  
+  if (lower.includes('chart') || lower.includes('graph') || lower.includes('visual')) {
+    return `Modified the visualizations in your dashboard.`;
+  }
+  
+  return `Dashboard updated successfully! I've applied your changes: "${refinement}"`;
+}
+
 function applyLocalRefinement(spec: DashboardSpec, refinement: string): RefinementResult {
   const lower = refinement.toLowerCase();
   const newSpec = JSON.parse(JSON.stringify(spec)) as DashboardSpec;
+  
+  const message = generateRefinementMessage(refinement, spec, newSpec);
 
   // Chart type changes
   if (lower.includes('pie')) {

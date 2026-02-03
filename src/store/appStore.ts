@@ -91,6 +91,10 @@ interface AppState {
   insights: string[];
   isLoadingInsights: boolean;
   
+  // Undo/Redo history
+  history: DashboardSpec[];
+  historyIndex: number;
+  
   // Actions
   setFileData: (fileName: string, data: DataRow[], schema: ColumnSchema[]) => void;
   setDataSampling: (enabled: boolean, maxRows?: number) => void;
@@ -114,6 +118,13 @@ interface AppState {
   setInsights: (insights: string[]) => void;
   setIsLoadingInsights: (loading: boolean) => void;
   
+  // Undo/Redo actions
+  pushToHistory: (spec: DashboardSpec) => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  
   reset: () => void;
 }
 
@@ -131,6 +142,8 @@ const initialState = {
   savedDashboards: [],
   insights: [],
   isLoadingInsights: false,
+  history: [],
+  historyIndex: -1,
 };
 
 export const useAppStore = create<AppState>()(
@@ -151,7 +164,24 @@ export const useAppStore = create<AppState>()(
         return state.rawData.slice(0, state.maxPreviewRows);
       },
       setPrompt: (prompt) => set({ prompt }),
-      setDashboardSpec: (dashboardSpec) => set({ dashboardSpec }),
+      setDashboardSpec: (dashboardSpec) => {
+        set({ dashboardSpec });
+        // Auto-push to history when spec changes (but not on initial load)
+        if (dashboardSpec) {
+          const state = get();
+          // Only push if it's different from current history entry
+          if (state.historyIndex >= 0 && state.history[state.historyIndex]) {
+            const current = JSON.stringify(state.history[state.historyIndex]);
+            const newSpec = JSON.stringify(dashboardSpec);
+            if (current !== newSpec) {
+              get().pushToHistory(dashboardSpec);
+            }
+          } else if (state.historyIndex === -1) {
+            // First spec, push to history
+            get().pushToHistory(dashboardSpec);
+          }
+        }
+      },
       setIsGenerating: (isGenerating) => set({ isGenerating }),
       setError: (error) => set({ error }),
       
@@ -225,6 +255,52 @@ export const useAppStore = create<AppState>()(
       
       setInsights: (insights) => set({ insights }),
       setIsLoadingInsights: (isLoadingInsights) => set({ isLoadingInsights }),
+      
+      pushToHistory: (spec) => {
+        const state = get();
+        const newHistory = state.history.slice(0, state.historyIndex + 1);
+        newHistory.push(JSON.parse(JSON.stringify(spec))); // Deep clone
+        // Limit history to 50 items
+        if (newHistory.length > 50) {
+          newHistory.shift();
+        }
+        set({
+          history: newHistory,
+          historyIndex: newHistory.length - 1,
+        });
+      },
+      
+      undo: () => {
+        const state = get();
+        if (state.historyIndex > 0) {
+          const previousSpec = state.history[state.historyIndex - 1];
+          set({
+            dashboardSpec: JSON.parse(JSON.stringify(previousSpec)), // Deep clone
+            historyIndex: state.historyIndex - 1,
+          });
+        }
+      },
+      
+      redo: () => {
+        const state = get();
+        if (state.historyIndex < state.history.length - 1) {
+          const nextSpec = state.history[state.historyIndex + 1];
+          set({
+            dashboardSpec: JSON.parse(JSON.stringify(nextSpec)), // Deep clone
+            historyIndex: state.historyIndex + 1,
+          });
+        }
+      },
+      
+      canUndo: () => {
+        const state = get();
+        return state.historyIndex > 0;
+      },
+      
+      canRedo: () => {
+        const state = get();
+        return state.historyIndex < state.history.length - 1;
+      },
       
       reset: () => set({
         ...initialState,

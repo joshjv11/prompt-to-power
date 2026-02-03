@@ -8,6 +8,9 @@ import { useAppStore, ChatMessage } from '@/store/appStore';
 import { refineDashboard } from '@/lib/conversational';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
+import { MessageBubble } from '@/components/chat/MessageBubble';
+import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { 
   generateContextualSuggestions, 
   getSuggestionColor, 
@@ -54,6 +57,9 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
     setInput(suggestion.text);
     setUsedSuggestions(prev => [...prev, suggestion.text]);
     textareaRef.current?.focus();
+    
+    // Track suggestion click
+    trackEvent.suggestionClicked(suggestion.text, suggestion.category);
   };
 
   const refreshSuggestions = () => {
@@ -72,9 +78,15 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
     try {
       const result = await refineDashboard(dashboardSpec, schema, rawData, userMessage, chatHistory);
       
+      // Push to history before updating
+      pushToHistory(result.spec);
+      
       setDashboardSpec(result.spec);
       addChatMessage({ role: 'assistant', content: result.message });
       setInsights([]); // Clear insights to refresh
+      
+      // Track successful refinement
+      trackEvent.dashboardRefined(userMessage, true);
       
       // Refresh suggestions after refinement
       setSuggestionSeed(s => s + 1);
@@ -88,6 +100,11 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to refine dashboard';
       addChatMessage({ role: 'assistant', content: `Sorry, I couldn't apply that change: ${message}` });
+      
+      // Track failed refinement
+      trackEvent.dashboardRefined(userMessage, false);
+      trackEvent.errorOccurred('dashboard_refinement', message);
+      
       toast({
         title: 'Refinement failed',
         description: message,
@@ -105,9 +122,6 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
     }
   };
 
-  const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
 
   if (!dashboardSpec) {
     return (
@@ -122,13 +136,17 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div 
+      className="flex flex-col h-full"
+      role="region"
+      aria-label="Dashboard Refinement Chat"
+    >
       <div className="flex-start gap-2 p-4 border-b border-border/50 flex-shrink-0">
-        <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
+        <Sparkles className="w-4 h-4 text-primary flex-shrink-0" aria-hidden="true" />
         <h3 className="font-semibold text-sm">Refine Dashboard</h3>
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4 transition-all duration-300" ref={scrollRef}>
         <AnimatePresence mode="popLayout">
           {chatHistory.length === 0 ? (
             <motion.div
@@ -175,55 +193,14 @@ export function RefinementChat({ onRefine }: RefinementChatProps) {
           ) : (
             <div className="space-y-4">
               {chatHistory.map((msg: ChatMessage) => (
-                <motion.div
+                <MessageBubble
                   key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className={cn(
-                    'flex gap-3',
-                    msg.role === 'user' ? 'justify-end' : 'justify-start'
-                  )}
-                >
-                  {msg.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-full bg-primary/20 flex-center flex-shrink-0">
-                      <Bot className="w-4 h-4 text-primary" />
-                    </div>
-                  )}
-                  <div
-                    className={cn(
-                      'max-w-[85%] rounded-xl px-3 py-2 text-sm flex flex-col',
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted/70'
-                    )}
-                  >
-                    <p className="break-words">{msg.content}</p>
-                    <span className="text-[10px] opacity-60 mt-1">
-                      {formatTime(msg.timestamp)}
-                    </span>
-                  </div>
-                  {msg.role === 'user' && (
-                    <div className="w-7 h-7 rounded-full bg-secondary flex-center flex-shrink-0">
-                      <User className="w-4 h-4" />
-                    </div>
-                  )}
-                </motion.div>
+                  role={msg.role}
+                  content={msg.content}
+                  timestamp={msg.timestamp}
+                />
               ))}
-              {isRefining && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex-start gap-3"
-                >
-                  <div className="w-7 h-7 rounded-full bg-primary/20 flex-center flex-shrink-0">
-                    <Bot className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="bg-muted/70 rounded-xl px-3 py-2 flex-center">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  </div>
-                </motion.div>
-              )}
+              {isRefining && <TypingIndicator />}
             </div>
           )}
         </AnimatePresence>

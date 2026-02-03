@@ -24,6 +24,9 @@ export const DashboardPreview = ({ className }: DashboardPreviewProps) => {
   return (
     <motion.div
       id="dashboard-preview"
+      role="region"
+      aria-label="Dashboard Preview"
+      aria-live="polite"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className={cn('space-y-6', className)}
@@ -45,7 +48,7 @@ export const DashboardPreview = ({ className }: DashboardPreviewProps) => {
 
       <DrillFilterBar />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 transition-all duration-300">
         {dashboardSpec.visuals.map((visual, idx) => (
           <VisualCard
             key={visual.id}

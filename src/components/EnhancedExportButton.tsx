@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/appStore';
 import { generatePowerBIExport, generatePBITTemplate, generatePlainTextInstructions } from '@/lib/powerBIExport';
+import { trackEvent } from '@/lib/analytics';
 import {
   Download,
   FileJson,
@@ -61,6 +62,7 @@ export function EnhancedExportButton() {
 
           pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
           pdf.save(`${dashboardSpec.title.replace(/\s+/g, '_')}.pdf`);
+          trackEvent.dashboardExported('pdf');
           toast({ title: 'PDF exported!' });
           break;
         }
@@ -73,6 +75,7 @@ export function EnhancedExportButton() {
           a.download = `${dashboardSpec.title.replace(/\s+/g, '_')}.pbit.json`;
           a.click();
           URL.revokeObjectURL(url);
+          trackEvent.dashboardExported('pbit');
           toast({ 
             title: 'Power BI Template exported!', 
             description: 'Import this JSON into Power BI Desktop to get started' 
@@ -92,6 +95,7 @@ export function EnhancedExportButton() {
           a.download = `${dashboardSpec.title.replace(/\s+/g, '_')}.json`;
           a.click();
           URL.revokeObjectURL(url);
+          trackEvent.dashboardExported('json');
           toast({ title: 'JSON exported!' });
           break;
         }
@@ -108,6 +112,7 @@ export function EnhancedExportButton() {
           a.download = 'dashboard_data.csv';
           a.click();
           URL.revokeObjectURL(url);
+          trackEvent.dashboardExported('csv');
           toast({ title: 'CSV exported!' });
           break;
         }
@@ -121,6 +126,7 @@ export function EnhancedExportButton() {
           a.download = `${dashboardSpec.title.replace(/\s+/g, '_')}_instructions.txt`;
           a.click();
           URL.revokeObjectURL(url);
+          trackEvent.dashboardExported('txt');
           toast({ title: 'Instructions exported!' });
           break;
         }
@@ -141,6 +147,7 @@ export function EnhancedExportButton() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button 
+          data-export-button
           className={cn(
             'gap-2 bg-gradient-to-r from-success to-emerald-600',
             'hover:from-success/90 hover:to-emerald-600/90',

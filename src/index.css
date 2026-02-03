@@ -70,6 +70,27 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Smooth transitions for all interactive elements */
+  button, a, input, textarea, select, [role="button"] {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  
+  /* Enhanced smoothness for hover states */
+  button:hover, a:hover {
+    transform: translateY(-1px);
+  }
+  
+  button:active, a:active {
+    transform: translateY(0);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -80,6 +101,11 @@
 @layer components {
   .glass-panel {
     @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .glass-panel:hover {
+    @apply border-border/70 shadow-lg;
   }
 
   .glow-border {
