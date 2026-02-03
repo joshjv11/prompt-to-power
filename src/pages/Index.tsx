@@ -57,7 +57,7 @@ const Index = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const { trackEvent } = useAnalytics();
   useUndoRedo(); // Initialize undo/redo keyboard shortcuts
-  
+
   useKeyboardShortcuts({
     onSave: () => {
       try {
@@ -94,7 +94,7 @@ const Index = () => {
     setAiSource(null);
     setProgressStep('Connecting to AI...');
     setInsights([]);
-    
+
     // Add user prompt to chat history
     addChatMessage({ role: 'user', content: prompt });
 
@@ -107,14 +107,14 @@ const Index = () => {
       );
 
       const generationTime = Date.now() - startTime;
-      
+
       setDashboardSpec(result.spec);
       setAiSource(result.source);
-      
+
       // Add AI response to chat
-      addChatMessage({ 
-        role: 'assistant', 
-        content: `Generated "${result.spec.title}" with ${result.spec.visuals.length} visualizations` 
+      addChatMessage({
+        role: 'assistant',
+        content: `Generated "${result.spec.title}" with ${result.spec.visuals.length} visualizations`
       });
 
       // Track successful generation
@@ -122,7 +122,7 @@ const Index = () => {
 
       // Success celebration
       triggerConfetti();
-      
+
       toast({
         title: result.source === 'ai' ? '🎉 AI Dashboard generated!' : '🎉 Dashboard generated!',
         description: `Created ${result.spec.visuals.length} visualizations${result.source === 'ai' ? ' using Gemini AI' : ''}. Try refining it or export to Power BI!`,
@@ -132,13 +132,13 @@ const Index = () => {
       const { getErrorInfo } = await import('@/lib/errorMessages');
       const errorInfo = getErrorInfo(message);
       setError(errorInfo.message);
-      
+
       // Track error
       trackEvent.errorOccurred('dashboard_generation', message, {
         hasData: rawData.length > 0,
         hasPrompt: prompt.trim().length > 0,
       });
-      
+
       toast({
         title: 'Generation failed',
         description: errorInfo.suggestion || message,
@@ -181,7 +181,7 @@ const Index = () => {
 
       {/* Onboarding Tour */}
       <OnboardingTour hasData={hasData} hasDashboard={hasDashboard} />
-      
+
       {/* Shortcuts Help */}
       <ShortcutsHelp open={showShortcuts} onOpenChange={setShowShortcuts} />
 
@@ -189,18 +189,18 @@ const Index = () => {
         {/* Header with save/share */}
         <div className="flex-between mb-6 flex-shrink-0">
           <HeroSection onTryDemo={handleTryDemo} compact />
-          
+
           <div className="flex items-center gap-2">
             <AuthDialog trigger={<Button variant="ghost" size="sm">Sign In</Button>} />
             <SavedDashboardsDrawer />
-            
+
             {hasDashboard && (
               <>
                 <ShareDialog />
                 <EnhancedExportButton />
               </>
             )}
-            
+
             <Button
               variant="ghost"
               size="sm"
@@ -312,12 +312,12 @@ const Index = () => {
               <div className="flex-between mb-4 flex-shrink-0">
                 <h2 className="text-lg font-semibold">Dashboard Preview</h2>
                 {aiSource && (
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={cn(
                       'text-xs flex items-center',
-                      aiSource === 'ai' 
-                        ? 'bg-success/10 text-success border-success/20' 
+                      aiSource === 'ai'
+                        ? 'bg-success/10 text-success border-success/20'
                         : 'bg-warning/10 text-warning border-warning/20'
                     )}
                   >
@@ -356,7 +356,7 @@ const Index = () => {
                     </div>
                     <h3 className="text-base font-medium mb-2">Ready to Generate</h3>
                     <p className="text-muted-foreground text-sm max-w-xs">
-                      {hasData 
+                      {hasData
                         ? 'Describe your dashboard and click Generate'
                         : 'Upload data or use sample data to get started'
                       }
