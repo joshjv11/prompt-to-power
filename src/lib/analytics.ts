@@ -130,5 +130,28 @@ export const trackEvent = {
       properties: { suggestion, category },
     });
   },
+  
+  featureUsed: (featureName: string) => {
+    analytics.track({
+      name: 'feature_used',
+      properties: { featureName },
+    });
+  },
+
+  promptSubmitted: (promptLength: number, columnCount: number) => {
+     analytics.track({
+      name: 'prompt_submitted',
+      properties: { promptLength, columnCount },
+    });
+  },
+
+  generationFailed: (errorMessage: string) => {
+     analytics.track({
+      name: 'generation_failed',
+      properties: { errorMessage },
+    });
+  },
 };
+
+export const track = trackEvent;
 
